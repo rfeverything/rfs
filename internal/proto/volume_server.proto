@@ -3,3 +3,18 @@ syntax = "proto3";
 package volume_server_proto;
 option go_package = "github.com/rfeverything/rfs/internal/proto/volume_server_proto";
 
+service VolumeServer{
+
+
+    rpc Ping(PingRequest) returns (PingResponse) {}
+}
+
+message PingRequest {
+    string target = 1;
+    string target_type = 2;
+}
+message PingResponse {
+    int64 start_time_ns = 1;
+    int64 remote_time_ns = 2;
+    int64 stop_time_ns = 3;
+}
