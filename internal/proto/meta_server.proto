@@ -1,0 +1,5 @@
+syntax = "proto3";
+
+package meta_server_proto;
+option go_package = "github.com/rfeverything/rfs/internal/proto/meta_server_proto";
+

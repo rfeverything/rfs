@@ -1,0 +1,5 @@
+syntax = "proto3";
+
+package volume_server_proto;
+option go_package = "github.com/rfeverything/rfs/internal/proto/volume_server_proto";
+
