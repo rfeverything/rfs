@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package rfs;
+option go_package = "github.com/rfeverything/rfs/internal/proto/rfs";
+
+message FileEntry{
+    enum FileType{
+        DIR= 0;
+        FILE= 1;
+    }
+    string file = 1;
+    uint32 size = 2;
+    string owner = 3;
+    string group = 4;
+    
+    //Optional fields for file.
+    uint32 block_replication = 5;
+    uint32 block_size = 6;
+    LocatedBlock locations = 7;
+
+    uint64 fileId = 8;
+
+    bytes content = 9;
+
+    uint32 flags = 10;
+    string namespace = 11;
+}
+
+message LocatedBlock {
+    Block block = 1;
+    uint64 offset = 2;
+    repeated VolumeServerInfo locations = 3;
+
+    repeated int32 volumeId = 4;
+}
+
+message Block{
+    uint64 blockId = 1;
+    uint64 size = 2;
+}
+
+message VolumeServerInfo {
+    string host = 1;
+    uint32 port = 2;
+    uint32 volumeId = 3;
+}

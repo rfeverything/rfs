@@ -13,7 +13,7 @@ import (
 // metaserverCmd represents the metaserver command
 var metaserverCmd = &cobra.Command{
 	Use:   "metaserver",
-	Short: "A brief description of your command",
+	Short: "Start meta Server.",
 	Long: `A longer description that spans multiple lines and likely contains examples
 and usage of using your command. For example:
 
@@ -28,13 +28,8 @@ to quickly create a Cobra application.`,
 func init() {
 	rootCmd.AddCommand(metaserverCmd)
 
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// metaserverCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// metaserverCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	metaserverCmd.Flags().StringP("addr", "a", "", "The address of the metaserver.")
+	metaserverCmd.Flags().StringP("port", "p", "", "The port of the metaserver.")
+	metaserverCmd.Flags().BoolP("verbose", "v", false, "If the verbose is true, the metaserver will print the debug information.")
+	metaserverCmd.Flags().BoolP("daemon", "d", false, "If the daemon is true, the metaserver will run as a daemon.")
 }

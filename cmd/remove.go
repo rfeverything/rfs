@@ -13,7 +13,7 @@ import (
 // removeCmd represents the remove command
 var removeCmd = &cobra.Command{
 	Use:     "remove",
-	Aliases: []string{"rm"},
+	Aliases: []string{"rm", "del", "delete"},
 	Short:   "Remove a file from the rfs.",
 	Long: `Remove a file from the rfs. For example:
 		rfs remove test.txt

@@ -1,13 +1,16 @@
-package metaserver
+package server
 
 import (
-	"github.com/rfeverything/rfs/internal/etcd"
+	mst "github.com/rfeverything/rfs/internal/metastore"
+	mpb "github.com/rfeverything/rfs/internal/proto/meta_server"
 	"go.uber.org/zap"
 )
 
 type MetaServer struct {
-	EtcdClient *etcd.EtcdClient
-	Logger     *zap.Logger
+	Logger    *zap.Logger
+	MetaStore *mst.MetaStore
+
+	*mpb.UnimplementedMetaServerServer
 
 	UniqueId int32
 }
