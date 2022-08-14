@@ -8,130 +8,114 @@ import "rfs.proto";
 service MetaServer{
     rpc CreateFile(CreateFileRequest) returns (CreateFileResponse);
     rpc AppendFile(AppendFileRequest) returns (AppendFileResponse);
-    rpc GetFileStat(GetFileStatRequest) returns (GetFileStatResponse);
-    rpc DeleteFile(DeleteFileRequest) returns (DeleteFileResponse);
+    rpc GetFile(GetFileRequest) returns (GetFileResponse);
+    rpc Remove(RemoveRequest) returns (RemoveResponse);
 
-    rpc RenameFile(RenameFileRequest) returns (RenameFileResponse);
-    // rpc MoveFile(MoveFileRequest) returns (MoveFileResponse);
-    // rpc CopyFile(CopyFileRequest) returns (CopyFileResponse);
+    rpc Move(MoveRequest) returns (MoveResponse);
 
     rpc Mkdir(MkdirRequest) returns (MkdirResponse);
-    rpc DeleteDir(DeleteDirRequest) returns (DeleteDirResponse);
     rpc List(ListRequest) returns (ListResponse);
     rpc RenameDir(RenameDirRequest) returns (RenameDirResponse);
-    rpc MoveDir(MoveDirRequest) returns (MoveDirResponse);
-    // rpc CopyDir(CopyDirRequest) returns (CopyDirResponse);
 
     // rpc AssignVolume(AssignVolumeRequest) returns (AssignVolumeResponse);
-
+    rpc RegisterVolumeServer(RegisterVolumeServerRequest) returns (RegisterVolumeServerResponse);
 
     rpc Ping(PingRequest) returns (PingResponse) {};
 }
 
 message CreateFileRequest{
-    int32 clineId = 1;
-    string file_name = 2;
-    string directory = 3;
-    bool o_excl = 4;
-    bool skip_check_parent_directory = 5;
+    string clientId = 1;
+    string directory = 2;
+    bool o_excl = 3;
+    bool skip_check_parent_directory = 4;
 
-    rfs.FileEntry file_entry = 6;
+    rfs.Entry entry = 5;
 }
 
 message CreateFileResponse{
-    rfs.LocatedBlock block = 1;
+    string error = 1;
 }
 
 message AppendFileRequest{
-    int32 clineId = 1;
+    string clientId = 1;
     string file_name = 2;
     string directory = 3;
-    bool skip_check_parent_directory = 4;
+    repeated rfs.Entry entry = 4;
 }
 
 message AppendFileResponse{
-    rfs.LocatedBlock block = 1;
-    rfs.FileEntry file_entry = 2;
+    string error = 1;
 }
 
-message GetFileStatRequest{
-    int32 clineId = 1;
+message GetFileRequest{
+    string clientId = 1;
     string file_name = 2;
     string directory = 3;
 }
 
-message GetFileStatResponse{
-    rfs.FileEntry file_entry = 1;
-}
-
-message DeleteFileRequest{
-    int32 clineId = 1;
-    string file_name = 2;
-    string directory = 3;
-    bool recursive = 4;
-}
-
-message DeleteFileResponse{
-    bool success = 1;
+message GetFileResponse{
+    string error = 1;
+    rfs.Entry entry = 2;
 }
 
 message RenameFileRequest{
-    int32 clineId = 1;
+    string clientId = 1;
     string old_file_name = 2;
     string new_file_name = 3;
     string directory = 4;
 }
 
 message RenameFileResponse{
-    bool success = 1;
+    string error = 1;
 }
 
 message MkdirRequest{
-    int32 clineId = 1;
+    string clientId = 1;
     string directory = 3;
 }
 
 message MkdirResponse{
-    bool success = 1;
+    string error = 1;
 }
 
-message DeleteDirRequest{
-    int32 clineId = 1;
+message RemoveRequest{
+    string clientId = 1;
     string directory = 3;
     bool recursive = 4;
 }
 
-message DeleteDirResponse{
-    bool success = 1;
+message RemoveResponse{
+    string error = 1;
 }
 
 message ListRequest{
-    int32 clineId = 1;
+    string clientId = 1;
     string directory = 3;
 }
 
 message ListResponse{
-    repeated rfs.FileEntry file_entries = 1;
+    string error = 1;
+    repeated rfs.Entry file_entries = 2;
 }
 
 message RenameDirRequest{
-    int32 clineId = 1;
+    string clientId = 1;
     string old_directory = 2;
     string new_directory = 3;
 }
 
 message RenameDirResponse{
-    bool success = 1;
+    string error = 1;
 }
 
-message MoveDirRequest{
-    int32 clineId = 1;
-    string old_directory = 2;
-    string new_directory = 3;
+message MoveRequest{
+    string clientId = 1;
+    string src_directory = 2;
+    string dst_directory = 3;
 }
 
-message MoveDirResponse{
-    bool success = 1;
+message MoveResponse{
+    string error = 1;
 }
 
 message PingRequest {

@@ -1,14 +1,14 @@
 package server
 
 import (
-	mst "github.com/rfeverything/rfs/internal/metastore"
+	mst "github.com/rfeverything/rfs/internal/metaserver"
 	mpb "github.com/rfeverything/rfs/internal/proto/meta_server"
 	"go.uber.org/zap"
 )
 
 type MetaServer struct {
 	Logger    *zap.Logger
-	MetaStore *mst.MetaStore
+	MetaStore *mst.MetaServer
 
 	*mpb.UnimplementedMetaServerServer
 

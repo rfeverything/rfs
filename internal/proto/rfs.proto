@@ -3,44 +3,45 @@ syntax = "proto3";
 package rfs;
 option go_package = "github.com/rfeverything/rfs/internal/proto/rfs";
 
-message FileEntry{
-    enum FileType{
-        DIR= 0;
-        FILE= 1;
-    }
-    string file = 1;
-    uint32 size = 2;
-    string owner = 3;
-    string group = 4;
-    
-    //Optional fields for file.
-    uint32 block_replication = 5;
-    uint32 block_size = 6;
-    LocatedBlock locations = 7;
-
-    uint64 fileId = 8;
-
-    bytes content = 9;
-
-    uint32 flags = 10;
-    string namespace = 11;
+message Entry {
+    string name = 1;
+    bool is_directory = 2;
+    repeated FileChunk chunks = 3;
+    FuseAttributes attributes = 4;
+    map<string, bytes> extended = 5;
+    // bytes hard_link_id = 7;
+    // int32 hard_link_counter = 8; // only exists in hard link meta data
+    bytes content = 9; // if not empty, the file content
 }
 
-message LocatedBlock {
-    Block block = 1;
-    uint64 offset = 2;
-    repeated VolumeServerInfo locations = 3;
+message FuseAttributes {
+    uint64 file_size = 1;
+    int64 mtime = 2; // unix time in seconds
+    uint32 file_mode = 3;
+    uint32 uid = 4;
+    uint32 gid = 5;
+    int64 crtime = 6; // unix time in seconds
+    string mime = 7;
 
-    repeated int32 volumeId = 4;
+    bytes md5 = 14;
+    uint32 rdev = 16;
+    uint64 inode = 17;
 }
 
-message Block{
-    uint64 blockId = 1;
-    uint64 size = 2;
+message FileChunk {
+    FileId fid = 1;
+    FileId source_fid = 2;
+    int64 offset = 3;
+    uint64 size = 4;
+    int64 mtime = 5;
+    string e_tag = 6;
+
+    bool is_compressed = 7;
+    bool is_chunk_manifest = 8; // content is a list of FileChunks
 }
 
-message VolumeServerInfo {
-    string host = 1;
-    uint32 port = 2;
-    uint32 volumeId = 3;
+message FileId {
+    uint32 volume_id = 1;
+    uint64 file_key = 2;
+    fixed32 cookie = 3;
 }

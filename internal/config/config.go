@@ -4,12 +4,10 @@ import (
 	"github.com/spf13/viper"
 )
 
-type Config struct {
-	cfg *viper.Viper
-}
+var cfg *viper.Viper
 
-func NewConfig() *Config {
-	cfg := viper.New()
+func init() {
+	cfg = viper.New()
 	cfg.SetConfigName("config")
 	cfg.AddConfigPath(".")
 	viper.AddConfigPath("/etc/rfs/")
@@ -18,6 +16,8 @@ func NewConfig() *Config {
 	if err := cfg.ReadInConfig(); err != nil {
 		panic(err)
 	}
+}
 
-	return &Config{cfg: cfg}
+func Global() *viper.Viper {
+	return cfg
 }
