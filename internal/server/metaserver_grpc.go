@@ -7,41 +7,33 @@ import (
 )
 
 func (m *MetaServer) CreateFile(ctx context.Context, req *mpb.CreateFileRequest) (*mpb.CreateFileResponse, error) {
-	return nil, nil
+	return m.metaserver.CreateFile(ctx, req)
 }
 
 func (m *MetaServer) AppendFile(ctx context.Context, req *mpb.AppendFileRequest) (*mpb.AppendFileResponse, error) {
-	return nil, nil
+	return m.metaserver.AppendFile(ctx, req)
 }
 
-func (m *MetaServer) GetFileStat(ctx context.Context, req *mpb.GetFileStatRequest) (*mpb.GetFileStatResponse, error) {
-	return nil, nil
+func (m *MetaServer) GetFile(ctx context.Context, req *mpb.GetFileRequest) (*mpb.GetFileResponse, error) {
+	return m.metaserver.GetFile(ctx, req)
 }
 
-func (m *MetaServer) DeleteFile(ctx context.Context, req *mpb.DeleteFileRequest) (*mpb.DeleteFileResponse, error) {
-	return nil, nil
+func (m *MetaServer) Stat(ctx context.Context, req *mpb.StatRequest) (*mpb.StatResponse, error) {
+	return m.metaserver.Stat(ctx, req)
 }
 
-func (m *MetaServer) RenameFile(ctx context.Context, req *mpb.RenameFileRequest) (*mpb.RenameFileResponse, error) {
-	return nil, nil
+func (m *MetaServer) Remove(ctx context.Context, req *mpb.RemoveRequest) (*mpb.RemoveResponse, error) {
+	return m.metaserver.Remove(ctx, req)
 }
 
 func (m *MetaServer) Mkdir(ctx context.Context, req *mpb.MkdirRequest) (*mpb.MkdirResponse, error) {
-	return nil, nil
-}
-
-func (m *MetaServer) DeleteDir(ctx context.Context, req *mpb.DeleteDirRequest) (*mpb.DeleteDirResponse, error) {
-	return nil, nil
+	return m.metaserver.Mkdir(ctx, req)
 }
 
 func (m *MetaServer) List(ctx context.Context, req *mpb.ListRequest) (*mpb.ListResponse, error) {
-	return nil, nil
+	return m.metaserver.List(ctx, req)
 }
 
-func (m *MetaServer) RenameDir(ctx context.Context, req *mpb.RenameDirRequest) (*mpb.RenameDirResponse, error) {
-	return nil, nil
-}
-
-func (m *MetaServer) MoveDir(ctx context.Context, req *mpb.MoveDirRequest) (*mpb.MoveDirResponse, error) {
-	return nil, nil
+func (m *MetaServer) Move(ctx context.Context, req *mpb.MoveRequest) (*mpb.MoveResponse, error) {
+	return m.metaserver.Move(ctx, req)
 }

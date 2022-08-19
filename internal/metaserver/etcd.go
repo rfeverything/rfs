@@ -8,9 +8,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rfeverything/rfs/internal/log"
+	"github.com/gogo/protobuf/proto"
+	"github.com/rfeverything/rfs/internal/logger"
+	vpb "github.com/rfeverything/rfs/internal/proto/volume_server"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
-	"go.etcd.io/etcd/clientv3"
 	"go.uber.org/zap"
 )
 
@@ -23,6 +25,7 @@ type EtcdStore struct {
 
 func genKey(dir, FileName string) (key []byte) {
 	key = []byte(dir)
+	key = append(key, []byte("/")...)
 	key = append(key, []byte(FileName)...)
 	return key
 }
@@ -35,23 +38,23 @@ func NewEtcdStore(UniqueID int32) *EtcdStore {
 		DialTimeout: 5 * time.Second,
 	}
 	if client, err = clientv3.New(config); err != nil {
-		log.Global().Fatal(err.Error())
+		logger.Global().Fatal(err.Error())
 	}
 
 	resp, err := client.Grant(context.TODO(), 5)
 	if err != nil {
-		log.Global().Fatal(err.Error())
+		logger.Global().Fatal(err.Error())
 	}
 
 	_, err = client.Put(context.TODO(), strings.Join([]string{"metaserver-", string(UniqueID)}, ""), "", clientv3.WithLease(resp.ID))
 	if err != nil {
-		log.Global().Fatal(err.Error())
+		logger.Global().Fatal(err.Error())
 	}
 
 	// to renew the lease only once
 	_, kaerr := client.KeepAlive(context.TODO(), resp.ID)
 	if kaerr != nil {
-		log.Global().Fatal(err.Error())
+		logger.Global().Fatal(err.Error())
 	}
 
 	return &EtcdStore{
@@ -68,9 +71,9 @@ func (es *EtcdStore) Close() {
 func (es *EtcdStore) InsertEntry(ctx context.Context, path string, entry *Entry) error {
 	key := genKey(filepath.Split(path))
 
-	meta, err := json.Marshal(entry)
+	meta, err := entry.EncodeAttributesAndChunks()
 	if err != nil {
-		return fmt.Errorf("json.Marshal: %v", err)
+		return fmt.Errorf("EncodeAttributesAndChunks: %v", err)
 	}
 
 	if _, err := es.client.Put(ctx, string(key), string(meta)); err != nil {
@@ -79,7 +82,7 @@ func (es *EtcdStore) InsertEntry(ctx context.Context, path string, entry *Entry)
 	return nil
 }
 
-func (es *EtcdStore) FindEntry(ctx context.Context, path string) (*Entry, error) {
+func (es *EtcdStore) GetEntry(ctx context.Context, path string) (*Entry, error) {
 	key := genKey(filepath.Split(path))
 	resp, err := es.client.Get(ctx, string(key))
 	if err != nil {
@@ -89,8 +92,8 @@ func (es *EtcdStore) FindEntry(ctx context.Context, path string) (*Entry, error)
 		return nil, nil
 	}
 	var entry Entry
-	if err := json.Unmarshal(resp.Kvs[0].Value, &entry); err != nil {
-		return nil, fmt.Errorf("json.Unmarshal: %v", err)
+	if err := entry.DecodeAttributesAndChunks(resp.Kvs[0].Value); err != nil {
+		return nil, fmt.Errorf("DecodeAttributesAndChunks: %v", err)
 	}
 	return &entry, nil
 }
@@ -104,7 +107,7 @@ func (es *EtcdStore) DeleteEntry(ctx context.Context, path string) error {
 }
 
 func (es *EtcdStore) ListEntries(ctx context.Context, dir string) ([]*Entry, error) {
-	key := genKey(filepath.Split(dir))
+	key := dir
 	resp, err := es.client.Get(ctx, string(key), clientv3.WithPrefix())
 	if err != nil {
 		return nil, fmt.Errorf("EtcdStore.Get: %v", err)
@@ -157,13 +160,29 @@ func (es *EtcdStore) election() {
 			continue
 		}
 
-		log.Global().Info("election: success", zap.Int32("uid", es.uniqueID))
+		logger.Global().Info("election: success", zap.Int32("uid", es.uniqueID))
 		es.isleader = true
 
 		select {
 		case <-s.Done():
 			es.isleader = false
-			log.Global().Debug("election: expired", zap.Int32("uid", es.uniqueID))
+			logger.Global().Debug("election: expired", zap.Int32("uid", es.uniqueID))
 		}
 	}
+}
+
+func (es *EtcdStore) GetVolumesStatus() ([]*vpb.VolumeStatus, error) {
+	resp, err := es.client.Get(context.TODO(), "volumeserver", clientv3.WithPrefix())
+	if err != nil {
+		return nil, fmt.Errorf("EtcdStore.Get: %v", err)
+	}
+	var volumes []*vpb.VolumeStatus
+	for _, kv := range resp.Kvs {
+		var volume vpb.VolumeStatus
+		if err := proto.Unmarshal(kv.Value, &volume); err != nil {
+			return nil, fmt.Errorf("proto.Unmarshal: %v", err)
+		}
+		volumes = append(volumes, &volume)
+	}
+	return volumes, nil
 }

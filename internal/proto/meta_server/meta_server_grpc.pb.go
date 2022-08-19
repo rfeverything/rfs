@@ -25,11 +25,11 @@ type MetaServerClient interface {
 	CreateFile(ctx context.Context, in *CreateFileRequest, opts ...grpc.CallOption) (*CreateFileResponse, error)
 	AppendFile(ctx context.Context, in *AppendFileRequest, opts ...grpc.CallOption) (*AppendFileResponse, error)
 	GetFile(ctx context.Context, in *GetFileRequest, opts ...grpc.CallOption) (*GetFileResponse, error)
+	Stat(ctx context.Context, in *StatRequest, opts ...grpc.CallOption) (*StatResponse, error)
 	Remove(ctx context.Context, in *RemoveRequest, opts ...grpc.CallOption) (*RemoveResponse, error)
 	Move(ctx context.Context, in *MoveRequest, opts ...grpc.CallOption) (*MoveResponse, error)
 	Mkdir(ctx context.Context, in *MkdirRequest, opts ...grpc.CallOption) (*MkdirResponse, error)
 	List(ctx context.Context, in *ListRequest, opts ...grpc.CallOption) (*ListResponse, error)
-	RenameDir(ctx context.Context, in *RenameDirRequest, opts ...grpc.CallOption) (*RenameDirResponse, error)
 	Ping(ctx context.Context, in *PingRequest, opts ...grpc.CallOption) (*PingResponse, error)
 }
 
@@ -62,6 +62,15 @@ func (c *metaServerClient) AppendFile(ctx context.Context, in *AppendFileRequest
 func (c *metaServerClient) GetFile(ctx context.Context, in *GetFileRequest, opts ...grpc.CallOption) (*GetFileResponse, error) {
 	out := new(GetFileResponse)
 	err := c.cc.Invoke(ctx, "/meta_server.MetaServer/GetFile", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *metaServerClient) Stat(ctx context.Context, in *StatRequest, opts ...grpc.CallOption) (*StatResponse, error) {
+	out := new(StatResponse)
+	err := c.cc.Invoke(ctx, "/meta_server.MetaServer/Stat", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -104,15 +113,6 @@ func (c *metaServerClient) List(ctx context.Context, in *ListRequest, opts ...gr
 	return out, nil
 }
 
-func (c *metaServerClient) RenameDir(ctx context.Context, in *RenameDirRequest, opts ...grpc.CallOption) (*RenameDirResponse, error) {
-	out := new(RenameDirResponse)
-	err := c.cc.Invoke(ctx, "/meta_server.MetaServer/RenameDir", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *metaServerClient) Ping(ctx context.Context, in *PingRequest, opts ...grpc.CallOption) (*PingResponse, error) {
 	out := new(PingResponse)
 	err := c.cc.Invoke(ctx, "/meta_server.MetaServer/Ping", in, out, opts...)
@@ -129,11 +129,11 @@ type MetaServerServer interface {
 	CreateFile(context.Context, *CreateFileRequest) (*CreateFileResponse, error)
 	AppendFile(context.Context, *AppendFileRequest) (*AppendFileResponse, error)
 	GetFile(context.Context, *GetFileRequest) (*GetFileResponse, error)
+	Stat(context.Context, *StatRequest) (*StatResponse, error)
 	Remove(context.Context, *RemoveRequest) (*RemoveResponse, error)
 	Move(context.Context, *MoveRequest) (*MoveResponse, error)
 	Mkdir(context.Context, *MkdirRequest) (*MkdirResponse, error)
 	List(context.Context, *ListRequest) (*ListResponse, error)
-	RenameDir(context.Context, *RenameDirRequest) (*RenameDirResponse, error)
 	Ping(context.Context, *PingRequest) (*PingResponse, error)
 	mustEmbedUnimplementedMetaServerServer()
 }
@@ -151,6 +151,9 @@ func (UnimplementedMetaServerServer) AppendFile(context.Context, *AppendFileRequ
 func (UnimplementedMetaServerServer) GetFile(context.Context, *GetFileRequest) (*GetFileResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetFile not implemented")
 }
+func (UnimplementedMetaServerServer) Stat(context.Context, *StatRequest) (*StatResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Stat not implemented")
+}
 func (UnimplementedMetaServerServer) Remove(context.Context, *RemoveRequest) (*RemoveResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Remove not implemented")
 }
@@ -162,9 +165,6 @@ func (UnimplementedMetaServerServer) Mkdir(context.Context, *MkdirRequest) (*Mkd
 }
 func (UnimplementedMetaServerServer) List(context.Context, *ListRequest) (*ListResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method List not implemented")
-}
-func (UnimplementedMetaServerServer) RenameDir(context.Context, *RenameDirRequest) (*RenameDirResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RenameDir not implemented")
 }
 func (UnimplementedMetaServerServer) Ping(context.Context, *PingRequest) (*PingResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Ping not implemented")
@@ -232,6 +232,24 @@ func _MetaServer_GetFile_Handler(srv interface{}, ctx context.Context, dec func(
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MetaServerServer).GetFile(ctx, req.(*GetFileRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MetaServer_Stat_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StatRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MetaServerServer).Stat(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/meta_server.MetaServer/Stat",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MetaServerServer).Stat(ctx, req.(*StatRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -308,24 +326,6 @@ func _MetaServer_List_Handler(srv interface{}, ctx context.Context, dec func(int
 	return interceptor(ctx, in, info, handler)
 }
 
-func _MetaServer_RenameDir_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RenameDirRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(MetaServerServer).RenameDir(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/meta_server.MetaServer/RenameDir",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MetaServerServer).RenameDir(ctx, req.(*RenameDirRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _MetaServer_Ping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(PingRequest)
 	if err := dec(in); err != nil {
@@ -364,6 +364,10 @@ var MetaServer_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _MetaServer_GetFile_Handler,
 		},
 		{
+			MethodName: "Stat",
+			Handler:    _MetaServer_Stat_Handler,
+		},
+		{
 			MethodName: "Remove",
 			Handler:    _MetaServer_Remove_Handler,
 		},
@@ -378,10 +382,6 @@ var MetaServer_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "List",
 			Handler:    _MetaServer_List_Handler,
-		},
-		{
-			MethodName: "RenameDir",
-			Handler:    _MetaServer_RenameDir_Handler,
 		},
 		{
 			MethodName: "Ping",

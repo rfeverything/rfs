@@ -1,4 +1,4 @@
-package log
+package logger
 
 import (
 	"github.com/rfeverything/rfs/internal/config"
@@ -6,18 +6,18 @@ import (
 )
 
 var (
-	Logger *zap.Logger
+	logger *zap.Logger
 )
 
 func init() {
 	switch config.Global().GetString("debug") {
 	case "true":
-		Logger, _ = zap.NewDevelopment()
+		logger, _ = zap.NewDevelopment()
 	default:
-		Logger, _ = zap.NewProduction()
+		logger, _ = zap.NewProduction()
 	}
 }
 
 func Global() *zap.Logger {
-	return Logger
+	return logger
 }

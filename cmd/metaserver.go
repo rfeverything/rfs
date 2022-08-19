@@ -5,9 +5,14 @@ Copyright © 2022 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"fmt"
+	"net"
 
+	"github.com/rfeverything/rfs/internal/logger"
+	mpb "github.com/rfeverything/rfs/internal/proto/meta_server"
+	server "github.com/rfeverything/rfs/internal/server"
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
+	"google.golang.org/grpc"
 )
 
 // metaserverCmd represents the metaserver command
@@ -21,7 +26,16 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("metaserver called")
+		lis, err := net.Listen("tcp", ":"+cmd.Flag("port").Value.String())
+		if err != nil {
+			logger.Global().Fatal("failed to listen", zap.Error(err))
+		}
+		s := grpc.NewServer()
+		ms := server.NewMetaServer()
+		mpb.RegisterMetaServerServer(s, ms)
+		if err := s.Serve(lis); err != nil {
+			logger.Global().Fatal("failed to serve", zap.Error(err))
+		}
 	},
 }
 

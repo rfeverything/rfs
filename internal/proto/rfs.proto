@@ -29,15 +29,18 @@ message FuseAttributes {
 }
 
 message FileChunk {
-    FileId fid = 1;
-    FileId source_fid = 2;
-    int64 offset = 3;
-    uint64 size = 4;
-    int64 mtime = 5;
-    string e_tag = 6;
+    int64 chunkid = 1;
+    FileId fid = 2;
+    repeated string volume_ids = 3;
+    uint64 offset = 4;
+    uint64 size = 5;
+    int64 mtime = 6;
+    string e_tag = 7;
 
-    bool is_compressed = 7;
-    bool is_chunk_manifest = 8; // content is a list of FileChunks
+    bool is_compressed = 8;
+    bool is_chunk_manifest = 9; // content is a list of FileChunks
+
+    bytes content = 10; // if not empty, the chunk content
 }
 
 message FileId {

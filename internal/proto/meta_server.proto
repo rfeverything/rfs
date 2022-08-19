@@ -9,23 +9,24 @@ service MetaServer{
     rpc CreateFile(CreateFileRequest) returns (CreateFileResponse);
     rpc AppendFile(AppendFileRequest) returns (AppendFileResponse);
     rpc GetFile(GetFileRequest) returns (GetFileResponse);
+    rpc Stat(StatRequest) returns (StatResponse);
+
     rpc Remove(RemoveRequest) returns (RemoveResponse);
 
     rpc Move(MoveRequest) returns (MoveResponse);
 
     rpc Mkdir(MkdirRequest) returns (MkdirResponse);
     rpc List(ListRequest) returns (ListResponse);
-    rpc RenameDir(RenameDirRequest) returns (RenameDirResponse);
 
     // rpc AssignVolume(AssignVolumeRequest) returns (AssignVolumeResponse);
-    rpc RegisterVolumeServer(RegisterVolumeServerRequest) returns (RegisterVolumeServerResponse);
+    // rpc RegisterVolumeServer(RegisterVolumeServerRequest) returns (RegisterVolumeServerResponse);
 
     rpc Ping(PingRequest) returns (PingResponse) {};
 }
 
 message CreateFileRequest{
     string clientId = 1;
-    string directory = 2;
+    string path = 2;
     bool o_excl = 3;
     bool skip_check_parent_directory = 4;
 
@@ -38,9 +39,8 @@ message CreateFileResponse{
 
 message AppendFileRequest{
     string clientId = 1;
-    string file_name = 2;
-    string directory = 3;
-    repeated rfs.Entry entry = 4;
+    string path = 2;
+    repeated rfs.Entry entry = 3;
 }
 
 message AppendFileResponse{
@@ -49,8 +49,7 @@ message AppendFileResponse{
 
 message GetFileRequest{
     string clientId = 1;
-    string file_name = 2;
-    string directory = 3;
+    string path = 2;
 }
 
 message GetFileResponse{
@@ -58,15 +57,14 @@ message GetFileResponse{
     rfs.Entry entry = 2;
 }
 
-message RenameFileRequest{
+message StatRequest{
     string clientId = 1;
-    string old_file_name = 2;
-    string new_file_name = 3;
-    string directory = 4;
+    string path = 2;
 }
 
-message RenameFileResponse{
+message StatResponse{
     string error = 1;
+    rfs.Entry entry = 2;
 }
 
 message MkdirRequest{
@@ -80,7 +78,7 @@ message MkdirResponse{
 
 message RemoveRequest{
     string clientId = 1;
-    string directory = 3;
+    string path = 3;
     bool recursive = 4;
 }
 
@@ -95,23 +93,13 @@ message ListRequest{
 
 message ListResponse{
     string error = 1;
-    repeated rfs.Entry file_entries = 2;
-}
-
-message RenameDirRequest{
-    string clientId = 1;
-    string old_directory = 2;
-    string new_directory = 3;
-}
-
-message RenameDirResponse{
-    string error = 1;
+    repeated rfs.Entry entries = 2;
 }
 
 message MoveRequest{
     string clientId = 1;
-    string src_directory = 2;
-    string dst_directory = 3;
+    string src_path = 2;
+    string dst_path = 3;
 }
 
 message MoveResponse{

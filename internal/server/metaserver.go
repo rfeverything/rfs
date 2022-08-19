@@ -7,8 +7,8 @@ import (
 )
 
 type MetaServer struct {
-	Logger    *zap.Logger
-	MetaStore *mst.MetaServer
+	logger     *zap.Logger
+	metaserver *mst.MetaServer
 
 	*mpb.UnimplementedMetaServerServer
 
@@ -16,5 +16,11 @@ type MetaServer struct {
 }
 
 func NewMetaServer() *MetaServer {
-	return &MetaServer{}
+	ms := &MetaServer{}
+	var err error
+	ms.metaserver, err = mst.NewMetaServer()
+	if err != nil {
+		ms.logger.Fatal("NewMetaServer", zap.Error(err))
+	}
+	return ms
 }

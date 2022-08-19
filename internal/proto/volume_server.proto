@@ -3,10 +3,63 @@ syntax = "proto3";
 package volume_server_proto;
 option go_package = "github.com/rfeverything/rfs/internal/proto/volume_server_proto";
 
+import "rfs.proto";
+
 service VolumeServer{
+    rpc PutChunk(PutChunkRequest) returns (PutChunkResponse) {};
+    rpc GetChunk(GetChunkRequest) returns (GetChunkResponse) {};
+    rpc DeleteChunk(DeleteChunkRequest) returns (DeleteChunkResponse) {};
 
+    // rpc MoveChunkToOtherVolume(MoveChunkToOtherVolumeRequest) returns (MoveChunkToOtherVolumeResponse) {};
 
-    rpc Ping(PingRequest) returns (PingResponse) {}
+    rpc VolumeStatus(VolumeStatusRequest) returns (VolumeStatusResponse) {};
+
+    rpc Ping(PingRequest) returns (PingResponse) {};
+}
+
+message PutChunkRequest{
+    repeated rfs.FileChunk chunks = 1;
+}
+
+message PutChunkResponse{
+    string error = 1;
+}
+
+message GetChunkRequest{
+    string volume_id = 1;
+    int64 chunk_id = 2;
+    uint64 offset = 3;
+}
+
+message GetChunkResponse{
+    string error = 1;
+    repeated rfs.FileChunk chunk = 2;
+}
+
+message DeleteChunkRequest{
+    string volume_id = 1;
+    int64 chunk_id = 2;
+}
+
+message DeleteChunkResponse{
+    string error = 1;
+}
+
+message VolumeStatus{
+    string volume_id = 1;
+    string address = 2;
+    uint64 total = 3;
+    uint64 used = 4;
+    uint64 free = 5;
+    uint64 chunk_size = 6;
+    uint64 chunk_count = 7;
+}
+
+message VolumeStatusRequest{
+}
+
+message VolumeStatusResponse{
+    repeated VolumeStatus volume_status = 1;
 }
 
 message PingRequest {
