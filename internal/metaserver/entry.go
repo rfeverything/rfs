@@ -5,8 +5,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	rfspb "github.com/rfeverything/rfs/internal/proto/rfs"
+	"google.golang.org/protobuf/proto"
 )
 
 type Entry struct {
@@ -91,7 +91,6 @@ func FromProtoEntry(msg *rfspb.Entry, e *Entry) {
 	e.Inode = msg.Attributes.Inode
 	e.Extended = msg.Extended
 	e.Chunks = msg.Chunks
-	return
 }
 
 func (e *Entry) DecodeAttributesAndChunks(data []byte) error {

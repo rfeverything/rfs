@@ -1,1 +1,12 @@
+addr: ""
 debug: true
+metaserver:
+    host: ""
+    port: "8080"
+metrics:
+    host: ""
+    port: "8082"
+unique_id: 1298498081
+volume:
+    host: ""
+    port: "8081"

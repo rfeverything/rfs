@@ -50,6 +50,7 @@ func (ms *MetaServer) CreateFile(ctx context.Context, req *mpb.CreateFileRequest
 	}, nil
 }
 
+//TODO
 func (ms *MetaServer) AppendFile(ctx context.Context, req *mpb.AppendFileRequest) (*mpb.AppendFileResponse, error) {
 	return nil, nil
 }

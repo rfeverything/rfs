@@ -33,7 +33,7 @@ message GetChunkRequest{
 
 message GetChunkResponse{
     string error = 1;
-    repeated rfs.FileChunk chunk = 2;
+    rfs.FileChunk chunk = 2;
 }
 
 message DeleteChunkRequest{

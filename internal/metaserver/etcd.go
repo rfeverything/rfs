@@ -31,6 +31,7 @@ func genKey(dir, FileName string) (key []byte) {
 }
 
 func NewEtcdStore(UniqueID int32) *EtcdStore {
+	logger.Global().Info("NewEtcdStore", zap.Int32("uid", UniqueID))
 	var client *clientv3.Client
 	var err error
 	config := clientv3.Config{
@@ -51,16 +52,18 @@ func NewEtcdStore(UniqueID int32) *EtcdStore {
 		logger.Global().Fatal(err.Error())
 	}
 
-	// to renew the lease only once
 	_, kaerr := client.KeepAlive(context.TODO(), resp.ID)
 	if kaerr != nil {
 		logger.Global().Fatal(err.Error())
 	}
-
-	return &EtcdStore{
+	es := &EtcdStore{
 		client:   client,
 		uniqueID: UniqueID,
 	}
+	go es.election()
+	logger.Global().Info("NewEtcdStore Done", zap.Int32("UniqueID", UniqueID))
+
+	return es
 }
 
 func (es *EtcdStore) Close() {
@@ -146,6 +149,7 @@ func (es *EtcdStore) IsLeader() bool {
 }
 
 func (es *EtcdStore) election() {
+	logger.Global().Info("election")
 	for !es.closed {
 		s, err := concurrency.NewSession(es.client, concurrency.WithTTL(5))
 		if err != nil {
@@ -167,6 +171,9 @@ func (es *EtcdStore) election() {
 		case <-s.Done():
 			es.isleader = false
 			logger.Global().Debug("election: expired", zap.Int32("uid", es.uniqueID))
+		default:
+			logger.Global().Debug("election: running", zap.Int32("uid", es.uniqueID))
+			time.Sleep(time.Second)
 		}
 	}
 }

@@ -5,8 +5,9 @@ import (
 	"strings"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/rfeverything/rfs/internal/logger"
+	"go.uber.org/zap"
 )
 
 var (
@@ -80,9 +81,6 @@ var (
 )
 
 func init() {
-	prometheus.MustRegister(collectors.NewGoCollector())
-	prometheus.MustRegister(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
-
 	prometheus.MustRegister(MetaServerRequestCounter)
 	prometheus.MustRegister(MetaServerRequestDuration)
 	prometheus.MustRegister(MetaServerStoreCounter)
@@ -94,7 +92,8 @@ func init() {
 	prometheus.MustRegister(VolumeServerDiskUsage)
 }
 
-func StartMetricsServer(port string) {
+func StartMetricsServer(host, port string) {
+	logger.Global().Info("Starting metrics server on port", zap.String("port", port))
 	http.Handle("/metrics", promhttp.Handler())
-	http.ListenAndServe(strings.Join([]string{":", port}, ""), nil)
+	http.ListenAndServe(strings.Join([]string{host, ":", port}, ""), nil)
 }
