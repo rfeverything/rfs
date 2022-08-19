@@ -26,7 +26,7 @@ func (ms *MetaServer) GetFile(ctx context.Context, req *mpb.GetFileRequest) (*mp
 			if resp.Error != "" {
 				return nil, errors.New(resp.Error)
 			}
-			chunk.Content = resp.GetChunk()[0].Content
+			chunk.Content = resp.GetChunk().Content
 			break
 		}
 	}

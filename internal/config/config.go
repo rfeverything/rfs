@@ -19,8 +19,9 @@ func init() {
 		"host": "",
 	})
 	cfg.SetDefault("volume", map[string]interface{}{
-		"port": "8081",
-		"host": "",
+		"port":   "8081",
+		"host":   "",
+		"dbpath": "./db",
 	})
 	cfg.SetDefault("metrics", map[string]interface{}{
 		"port": "8082",

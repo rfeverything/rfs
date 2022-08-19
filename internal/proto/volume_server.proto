@@ -48,18 +48,17 @@ message DeleteChunkResponse{
 message VolumeStatus{
     string volume_id = 1;
     string address = 2;
-    uint64 total = 3;
+    uint64 size = 3;
     uint64 used = 4;
     uint64 free = 5;
-    uint64 chunk_size = 6;
-    uint64 chunk_count = 7;
+    uint64 chunk_count = 6;
 }
 
 message VolumeStatusRequest{
 }
 
 message VolumeStatusResponse{
-    repeated VolumeStatus volume_status = 1;
+    VolumeStatus volume_status = 1;
 }
 
 message PingRequest {
