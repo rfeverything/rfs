@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/rfeverything/rfs/internal/config"
+	"github.com/rfeverything/rfs/internal/logger"
 	mpb "github.com/rfeverything/rfs/internal/proto/meta_server"
 	rfspb "github.com/rfeverything/rfs/internal/proto/rfs"
 	"go.uber.org/zap"
@@ -59,7 +60,7 @@ func (rc *RfsClient) GetFile(ctx context.Context, path string, callback func(io.
 		Path:     path,
 		ClientId: rc.UUID.String(),
 	}
-	log.Global().Debug("get file", zap.String("path", path))
+	logger.Global().Debug("get file", zap.String("path", path))
 	resp, err := rc.mpbclient.GetFile(ctx, req)
 	if err != nil {
 		return "", err
@@ -68,7 +69,7 @@ func (rc *RfsClient) GetFile(ctx context.Context, path string, callback func(io.
 		return "", errors.New(resp.Error)
 	}
 	callback(bytes.NewReader(resp.Entry.Content))
-	log.Global().Debug("get file done", zap.String("path", path))
+	logger.Global().Debug("get file done", zap.String("path", path))
 
 	return resp.Entry.Name, nil
 }
@@ -97,7 +98,7 @@ func (rc *RfsClient) PutFile(ctx context.Context, path string, file fs.File) (er
 		},
 	}
 
-	log.Global().Debug("put file", zap.String("path", path), zap.String("file", stat.Name()))
+	logger.Global().Debug("put file", zap.String("path", path), zap.String("file", stat.Name()))
 	resp, err := rc.mpbclient.CreateFile(ctx, req)
 	if err != nil {
 		panic(err)
@@ -115,7 +116,7 @@ func (rc *RfsClient) Mkdir(ctx context.Context, path string) (err error) {
 		Path:     path,
 		ClientId: rc.UUID.String(),
 	}
-	log.Global().Debug("mkdir", zap.String("path", path))
+	logger.Global().Debug("mkdir", zap.String("path", path))
 	resp, err := rc.mpbclient.CreateFile(ctx, req)
 	if err != nil {
 		return err
@@ -123,7 +124,7 @@ func (rc *RfsClient) Mkdir(ctx context.Context, path string) (err error) {
 	if resp.Error != "" {
 		return errors.New(resp.Error)
 	}
-	log.Global().Debug("mkdir done", zap.String("path", path))
+	logger.Global().Debug("mkdir done", zap.String("path", path))
 	return nil
 }
 
@@ -133,7 +134,7 @@ func (rc *RfsClient) Move(ctx context.Context, srcPath string, dstPath string) (
 		SrcPath:  srcPath,
 		DstPath:  dstPath,
 	}
-	log.Global().Debug("move", zap.String("srcDir", srcPath), zap.String("dstDir", dstPath))
+	logger.Global().Debug("move", zap.String("srcDir", srcPath), zap.String("dstDir", dstPath))
 	resp, err := rc.mpbclient.Move(ctx, req)
 	if err != nil {
 		return err
@@ -141,7 +142,7 @@ func (rc *RfsClient) Move(ctx context.Context, srcPath string, dstPath string) (
 	if resp.Error != "" {
 		return errors.New(resp.Error)
 	}
-	log.Global().Debug("move done", zap.String("srcDir", srcPath), zap.String("dstDir", dstPath))
+	logger.Global().Debug("move done", zap.String("srcDir", srcPath), zap.String("dstDir", dstPath))
 	return nil
 }
 
@@ -150,7 +151,7 @@ func (rc *RfsClient) Remove(ctx context.Context, path string) (err error) {
 		ClientId: rc.UUID.String(),
 		Path:     path,
 	}
-	log.Global().Debug("remove", zap.String("path", path))
+	logger.Global().Debug("remove", zap.String("path", path))
 	resp, err := rc.mpbclient.Remove(ctx, req)
 	if err != nil {
 		return err
@@ -158,7 +159,7 @@ func (rc *RfsClient) Remove(ctx context.Context, path string) (err error) {
 	if resp.Error != "" {
 		return errors.New(resp.Error)
 	}
-	log.Global().Debug("remove done", zap.String("path", path))
+	logger.Global().Debug("remove done", zap.String("path", path))
 	return nil
 }
 
@@ -167,7 +168,7 @@ func (rc *RfsClient) List(ctx context.Context, dir string) (es []*rfspb.Entry, e
 		ClientId:  rc.UUID.String(),
 		Directory: dir,
 	}
-	log.Global().Debug("list", zap.String("dir", dir))
+	logger.Global().Debug("list", zap.String("dir", dir))
 	resp, err := rc.mpbclient.List(ctx, req)
 	if err != nil {
 		return nil, err
@@ -175,7 +176,7 @@ func (rc *RfsClient) List(ctx context.Context, dir string) (es []*rfspb.Entry, e
 	if resp.Error != "" {
 		return nil, errors.New(resp.Error)
 	}
-	log.Global().Debug("list done", zap.String("dir", dir))
+	logger.Global().Debug("list done", zap.String("dir", dir))
 	return resp.Entries, nil
 }
 
