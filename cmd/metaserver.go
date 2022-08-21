@@ -1,6 +1,5 @@
 /*
 Copyright © 2022 NAME HERE <EMAIL ADDRESS>
-
 */
 package cmd
 
@@ -20,8 +19,9 @@ import (
 
 // metaserverCmd represents the metaserver command
 var metaserverCmd = &cobra.Command{
-	Use:   "metaserver",
-	Short: "Start meta Server.",
+	Use:     "metaserver",
+	Short:   "Start meta Server.",
+	Aliases: []string{"meta", "ms"},
 	Long: `A longer description that spans multiple lines and likely contains examples
 and usage of using your command. For example:
 
