@@ -14,6 +14,10 @@ func init() {
 	cfg.AddConfigPath("$HOME/.rfs")
 	cfg.SetConfigType("yaml")
 
+	cfg.SetDefault("client", map[string]interface{}{
+		"server": "localhost",
+		"port":   "8080",
+	})
 	cfg.SetDefault("metaserver", map[string]interface{}{
 		"port": "8080",
 		"host": "",

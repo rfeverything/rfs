@@ -16,3 +16,10 @@
 
 # IDE
 .vscode/
+
+rfs
+
+config.yaml
+
+volume_db
+volume_state

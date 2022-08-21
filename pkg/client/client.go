@@ -1,4 +1,4 @@
-package rfs
+package client
 
 import (
 	"bytes"
@@ -23,39 +23,41 @@ type RfsClient struct {
 	mpbclient     mpb.MetaServerClient
 }
 
-func NewRfsClient() *RfsClient {
-	url, err := url.Parse(config.Global().GetString("MetaServerURL"))
+func NewRfsClient() (*RfsClient, error) {
+	url, err := url.Parse(config.Global().GetString("client.server"))
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	conn, err := grpc.Dial(config.Global().GetString("MetaServerURL"))
+	conn, err := grpc.Dial(config.Global().GetString("client.server")+":"+config.Global().GetString("client.port"), grpc.WithInsecure())
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
-	suid := config.Global().GetString("UUID")
+	suid := config.Global().GetString("client.uuid")
 	var uid uuid.UUID
 	if suid != "" {
 		uid, err = uuid.Parse(suid)
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 	} else {
 		uid = uuid.New()
-		config.Global().Set("UUID", uid.String())
+		config.Global().Set("client.uuid", uid.String())
 		if err := config.Global().WriteConfig(); err != nil {
-			panic(err)
+			return nil, err
 		}
 	}
+
+	logger.Global().Debug("client uuid", zap.String("uuid", uid.String()))
 
 	return &RfsClient{
 		MetaServerURL: url,
 		mpbclient:     mpb.NewMetaServerClient(conn),
 		UUID:          uid,
-	}
+	}, nil
 }
 
-func (rc *RfsClient) GetFile(ctx context.Context, path string, callback func(io.Reader) error) (fileName string, err error) {
+func (rc *RfsClient) GetFile(ctx context.Context, path string) (fileName string, file io.Writer, err error) {
 	req := &mpb.GetFileRequest{
 		Path:     path,
 		ClientId: rc.UUID.String(),
@@ -63,15 +65,14 @@ func (rc *RfsClient) GetFile(ctx context.Context, path string, callback func(io.
 	logger.Global().Debug("get file", zap.String("path", path))
 	resp, err := rc.mpbclient.GetFile(ctx, req)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 	if resp.Error != "" {
-		return "", errors.New(resp.Error)
+		return "", nil, errors.New(resp.Error)
 	}
-	callback(bytes.NewReader(resp.Entry.Content))
 	logger.Global().Debug("get file done", zap.String("path", path))
 
-	return resp.Entry.Name, nil
+	return resp.Entry.Name, bytes.NewBuffer(resp.Entry.Content), nil
 }
 
 func (rc *RfsClient) PutFile(ctx context.Context, path string, file fs.File) (err error) {
@@ -83,6 +84,7 @@ func (rc *RfsClient) PutFile(ctx context.Context, path string, file fs.File) (er
 	if _, err := buf.ReadFrom(file); err != nil {
 		panic(err)
 	}
+	logger.Global().Debug("put file", zap.String("path", path))
 	req := &mpb.CreateFileRequest{
 		Path:     path,
 		ClientId: rc.UUID.String(),

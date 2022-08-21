@@ -47,7 +47,7 @@ func NewEtcdStore(UniqueID int32) *EtcdStore {
 		logger.Global().Fatal(err.Error())
 	}
 
-	_, err = client.Put(context.TODO(), strings.Join([]string{"metaserver-", string(UniqueID)}, ""), "", clientv3.WithLease(resp.ID))
+	_, err = client.Put(context.TODO(), strings.Join([]string{"/rfs/meta/", string(UniqueID)}, ""), "", clientv3.WithLease(resp.ID))
 	if err != nil {
 		logger.Global().Fatal(err.Error())
 	}
@@ -179,7 +179,7 @@ func (es *EtcdStore) election() {
 }
 
 func (es *EtcdStore) GetVolumesStatus() ([]*vpb.VolumeStatus, error) {
-	resp, err := es.client.Get(context.TODO(), "volumeserver", clientv3.WithPrefix())
+	resp, err := es.client.Get(context.TODO(), "/rfs/volumes/", clientv3.WithPrefix())
 	if err != nil {
 		return nil, fmt.Errorf("EtcdStore.Get: %v", err)
 	}

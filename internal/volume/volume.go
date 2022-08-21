@@ -2,10 +2,11 @@ package volume
 
 import (
 	"context"
+	"time"
 
+	gorocksdb "github.com/linxGnu/grocksdb"
 	rfspb "github.com/rfeverything/rfs/internal/proto/rfs"
 	vpb "github.com/rfeverything/rfs/internal/proto/volume_server"
-	"github.com/tecbot/gorocksdb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"google.golang.org/protobuf/proto"
 )
@@ -26,18 +27,52 @@ type VolumeServer struct {
 
 func NewVolumeServer() *VolumeServer {
 	vs := &VolumeServer{}
-	sdb, err := gorocksdb.OpenDb(gorocksdb.NewDefaultOptions(), "./volume_state")
+	opt := gorocksdb.NewDefaultOptions()
+	opt.SetCreateIfMissing(true)
+	sdb, err := gorocksdb.OpenDb(opt, "./volume_state")
 	if err != nil {
 		panic(err)
 	}
 	vs.sdb = sdb
-	db, err := gorocksdb.OpenDb(gorocksdb.NewDefaultOptions(), "./volume_db")
+	db, err := gorocksdb.OpenDb(opt, "./volume_db")
 	if err != nil {
 		panic(err)
 	}
 	vs.db = db
 	vs.recoverFromPersistence()
+	go vs.registerToEtcd()
 	return vs
+}
+
+func (vs *VolumeServer) registerToEtcd() {
+	cfg := clientv3.Config{
+		Endpoints:   []string{"localhost:2379"},
+		DialTimeout: 5 * time.Second,
+	}
+	c, err := clientv3.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+	resp, err := c.Grant(context.TODO(), 5)
+	if err != nil {
+		panic(err)
+	}
+	_, kaerr := c.KeepAlive(context.TODO(), resp.ID)
+	if kaerr != nil {
+		panic(kaerr)
+	}
+	vs.etcd = c
+	for {
+		time.Sleep(1 * time.Second)
+		s, err := proto.Marshal(vs.getStatus())
+		if err != nil {
+			panic(err)
+		}
+		_, err = vs.etcd.Put(context.Background(), "/rfs/volumes/"+vs.ID, string(s), clientv3.WithLease(resp.ID))
+		if err != nil {
+			panic(err)
+		}
+	}
 }
 
 func (vs *VolumeServer) persist() {
@@ -105,7 +140,12 @@ func (vs *VolumeServer) DeleteChunk(ctx context.Context, req *vpb.DeleteChunkReq
 	}
 	return nil, nil
 }
+
 func (vs *VolumeServer) VolumeStatus(ctx context.Context, req *vpb.VolumeStatusRequest) (*vpb.VolumeStatusResponse, error) {
+	return vs.getStatus(), nil
+}
+
+func (vs *VolumeServer) getStatus() *vpb.VolumeStatusResponse {
 	return &vpb.VolumeStatusResponse{
 		VolumeStatus: &vpb.VolumeStatus{
 			VolumeId:   vs.ID,
@@ -115,8 +155,9 @@ func (vs *VolumeServer) VolumeStatus(ctx context.Context, req *vpb.VolumeStatusR
 			Free:       vs.Size - vs.Used,
 			Address:    vs.Host + ":" + string(rune(vs.Port)),
 		},
-	}, nil
+	}
 }
+
 func (vs *VolumeServer) Ping(ctx context.Context, req *vpb.PingRequest) (*vpb.PingResponse, error) {
 	return &vpb.PingResponse{}, nil
 }
