@@ -21,10 +21,14 @@ func (ms *MetaServer) GetFile(ctx context.Context, req *mpb.GetFileRequest) (*mp
 	gerr := make(chan error, len(e.Chunks))
 	for _, chunk := range e.Chunks {
 		wait.Add(1)
-		go func(chunk *rfspb.FileChunk) {
+		req := &vpb.GetChunkRequest{
+			ChunkId: chunk.Chunkid,
+		}
+		go func(chunk *rfspb.FileChunk, req *vpb.GetChunkRequest) {
 			for _, volumeserver := range chunk.VolumeIds {
-				req := &vpb.GetChunkRequest{
-					ChunkId: chunk.Chunkid,
+				if _, exist := ms.VolumeClients[volumeserver]; !exist {
+					logger.Global().Sugar().Errorf("volumeserver %s not exist", volumeserver)
+					continue
 				}
 				resp, err := ms.VolumeClients[volumeserver].GetChunk(ctx, req)
 				if err != nil {
@@ -41,7 +45,7 @@ func (ms *MetaServer) GetFile(ctx context.Context, req *mpb.GetFileRequest) (*mp
 			}
 			gerr <- errors.New("no volume server available")
 			wait.Done()
-		}(chunk)
+		}(chunk, req)
 	}
 	wait.Wait()
 	close(gerr)
