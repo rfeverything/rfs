@@ -35,7 +35,7 @@ func (ms *MetaServer) GetFile(ctx context.Context, req *mpb.GetFileRequest) (*mp
 	}
 
 	re := &rfspb.Entry{}
-	if err := e.ToExistingProtoEntry(re); err != nil {
+	if err := e.ToExistingProtoEntry(re, true); err != nil {
 		return nil, err
 	}
 
@@ -53,7 +53,7 @@ func (ms *MetaServer) Stat(ctx context.Context, req *mpb.StatRequest) (*mpb.Stat
 	}
 	re := &rfspb.Entry{}
 
-	if err := e.ToExistingProtoEntry(re); err != nil {
+	if err := e.ToExistingProtoEntry(re, false); err != nil {
 		return nil, err
 	}
 
@@ -78,7 +78,7 @@ func (ms *MetaServer) List(ctx context.Context, req *mpb.ListRequest) (*mpb.List
 	re := make([]*rfspb.Entry, 0)
 	for _, entry := range entries {
 		res := &rfspb.Entry{}
-		if err := entry.ToExistingProtoEntry(res); err != nil {
+		if err := entry.ToExistingProtoEntry(res, false); err != nil {
 			return nil, err
 		}
 		re = append(re, res)

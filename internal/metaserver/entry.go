@@ -45,7 +45,7 @@ func (a *Attr) IsDir() bool {
 	return a.Mode.IsDir()
 }
 
-func (e *Entry) ToExistingProtoEntry(message *rfspb.Entry) error {
+func (e *Entry) ToExistingProtoEntry(message *rfspb.Entry, hasContent bool) error {
 	if e == nil {
 		return errors.New("entry is nil")
 	}
@@ -64,13 +64,15 @@ func (e *Entry) ToExistingProtoEntry(message *rfspb.Entry) error {
 	}
 	message.Extended = e.Extended
 	message.Chunks = e.Chunks
-	message.Content = e.Content
+	if hasContent {
+		message.Content = e.Content
+	}
 	return nil
 }
 
 func (e *Entry) EncodeAttributesAndChunks() ([]byte, error) {
 	msg := &rfspb.Entry{}
-	e.ToExistingProtoEntry(msg)
+	e.ToExistingProtoEntry(msg, false)
 	return json.Marshal(msg)
 }
 
