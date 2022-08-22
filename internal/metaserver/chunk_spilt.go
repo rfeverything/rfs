@@ -2,6 +2,7 @@ package metaserver
 
 import (
 	"errors"
+	"math/rand"
 
 	"github.com/rfeverything/rfs/internal/proto/rfs"
 )
@@ -16,8 +17,9 @@ func (e *Entry) SplitToChunks(chunkSize uint64) error {
 	e.Chunks = make([]*rfs.FileChunk, 0)
 	for i := uint64(0); i < uint64(len(e.Content)); i += chunkSize {
 		chunk := &rfs.FileChunk{
-			Offset: i,
-			Size:   chunkSize,
+			Chunkid: rand.Int63(),
+			Offset:  i,
+			Size:    chunkSize,
 		}
 		if i+chunkSize > uint64(len(e.Content)) {
 			chunk.Size = uint64(len(e.Content)) - i
