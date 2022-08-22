@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gogo/protobuf/proto"
 	"github.com/rfeverything/rfs/internal/logger"
 	vpb "github.com/rfeverything/rfs/internal/proto/volume_server"
+	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
 	"go.uber.org/zap"
@@ -21,13 +21,15 @@ type EtcdStore struct {
 	client   *clientv3.Client
 	isleader bool
 	closed   bool
+
+	volumeUpdateChan chan *VolumeUpdateEvent
 }
 
-func genKey(dir, FileName string) (key []byte) {
-	key = []byte(dir)
-	key = append(key, []byte("/")...)
-	key = append(key, []byte(FileName)...)
-	return key
+func genKey(dir, FileName string) (key string) {
+	if strings.HasPrefix(dir, "/") {
+		dir = dir[1:]
+	}
+	return strings.Join([]string{dir, FileName}, "/")
 }
 
 func NewEtcdStore(UniqueID int32) *EtcdStore {
@@ -52,15 +54,23 @@ func NewEtcdStore(UniqueID int32) *EtcdStore {
 		logger.Global().Fatal(err.Error())
 	}
 
-	_, kaerr := client.KeepAlive(context.TODO(), resp.ID)
+	klresp, kaerr := client.KeepAlive(context.TODO(), resp.ID)
 	if kaerr != nil {
 		logger.Global().Fatal(err.Error())
 	}
+	//clean lease keepalive response queue
+	go func() {
+		for {
+			<-klresp
+		}
+	}()
 	es := &EtcdStore{
 		client:   client,
 		uniqueID: UniqueID,
 	}
+	es.volumeUpdateChan = make(chan *VolumeUpdateEvent, 1)
 	go es.election()
+	go es.watchVolume()
 	logger.Global().Info("NewEtcdStore Done", zap.Int32("UniqueID", UniqueID))
 
 	return es
@@ -71,8 +81,8 @@ func (es *EtcdStore) Close() {
 	es.client.Close()
 }
 
-func (es *EtcdStore) InsertEntry(ctx context.Context, path string, entry *Entry) error {
-	key := genKey(filepath.Split(path))
+func (es *EtcdStore) InsertEntry(ctx context.Context, dir string, entry *Entry) error {
+	key := genKey(dir, entry.Name)
 
 	meta, err := entry.EncodeAttributesAndChunks()
 	if err != nil {
@@ -118,8 +128,8 @@ func (es *EtcdStore) ListEntries(ctx context.Context, dir string) ([]*Entry, err
 	var entries []*Entry
 	for _, kv := range resp.Kvs {
 		var entry Entry
-		if err := json.Unmarshal(kv.Value, &entry); err != nil {
-			return nil, fmt.Errorf("json.Unmarshal: %v", err)
+		if err := entry.DecodeAttributesAndChunks(kv.Value); err != nil {
+			return nil, fmt.Errorf("DecodeAttributesAndChunks: %v", err)
 		}
 		entries = append(entries, &entry)
 	}
@@ -186,10 +196,43 @@ func (es *EtcdStore) GetVolumesStatus() ([]*vpb.VolumeStatus, error) {
 	var volumes []*vpb.VolumeStatus
 	for _, kv := range resp.Kvs {
 		var volume vpb.VolumeStatus
-		if err := proto.Unmarshal(kv.Value, &volume); err != nil {
-			return nil, fmt.Errorf("proto.Unmarshal: %v", err)
+		if err := json.Unmarshal(kv.Value, &volume); err != nil {
+			return nil, fmt.Errorf("json.Unmarshal: %v", err)
 		}
 		volumes = append(volumes, &volume)
 	}
 	return volumes, nil
+}
+
+func (es *EtcdStore) GetVolumesStatusChan() chan *VolumeUpdateEvent {
+	return es.volumeUpdateChan
+}
+
+func (es *EtcdStore) watchVolume() {
+	ctx := context.TODO()
+	rch := es.client.Watch(ctx, "/rfs/volumes/", clientv3.WithPrefix())
+	for wresp := range rch {
+		for _, ev := range wresp.Events {
+			switch ev.Type {
+			case mvccpb.PUT:
+				var volume vpb.VolumeStatus
+				if err := json.Unmarshal(ev.Kv.Value, &volume); err != nil {
+					logger.Global().Error("json.Unmarshal", zap.Error(err))
+					continue
+				}
+				logger.Global().Info("watchVolume: PUT", zap.String("key", string(ev.Kv.Key)), zap.Any("volume", &volume))
+				es.volumeUpdateChan <- &VolumeUpdateEvent{
+					Type:     VolumeEventTypePut,
+					Status:   &volume,
+					VolumeId: string(ev.Kv.Key[len("/rfs/volumes/") : len(ev.Kv.Key)-1]),
+				}
+			case mvccpb.DELETE:
+				logger.Global().Info("watchVolume: DELETE", zap.String("key", string(ev.Kv.Key)))
+				es.volumeUpdateChan <- &VolumeUpdateEvent{
+					Type:     VolumeEventTypeDelete,
+					VolumeId: string(ev.Kv.Key[len("/rfs/volumes/") : len(ev.Kv.Key)-1]),
+				}
+			}
+		}
+	}
 }

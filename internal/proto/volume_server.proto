@@ -52,6 +52,7 @@ message VolumeStatus{
     uint64 used = 4;
     uint64 free = 5;
     uint64 chunk_count = 6;
+    map<int64,uint64> chunk_ids = 7;//chunk_id,size
 }
 
 message VolumeStatusRequest{

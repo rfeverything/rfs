@@ -1,4 +1,4 @@
 package constant
 
-const ChunkSize = 1024 * 1024 * 1024 * 4 // 4GB
+const ChunkSize = 64 * (1 << 20) // 64MB
 const Replication = 1

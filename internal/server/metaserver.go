@@ -10,8 +10,6 @@ type MetaServer struct {
 	metaserver *mst.MetaServer
 
 	*mpb.UnimplementedMetaServerServer
-
-	UniqueId int32
 }
 
 func NewMetaServer() (*MetaServer, error) {

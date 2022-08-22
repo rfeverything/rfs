@@ -12,14 +12,14 @@ import (
 type MetaServer struct {
 	Store         *EtcdStore
 	UniqueId      int32
-	VolumeClients map[string]vpb.VolumeServerClient
+	VolumeClients map[string]vpb.VolumeServerClient // key: volumeId
 }
 
 func NewMetaServer() (*MetaServer, error) {
-	UniqueID := config.Global().GetInt32("unique_id")
+	UniqueID := config.Global().GetInt32("metaserver.unique_id")
 	if UniqueID == 0 {
 		UniqueID = rand.Int31()
-		config.Global().Set("unique_id", UniqueID)
+		config.Global().Set("metaserver.unique_id", UniqueID)
 		if err := config.Global().WriteConfig(); err != nil {
 			logger.Global().Fatal(err.Error())
 		}
@@ -29,8 +29,10 @@ func NewMetaServer() (*MetaServer, error) {
 	}
 	Store := NewEtcdStore(UniqueID)
 	logger.Global().Info("NewMetaServer", zap.Int32("UniqueID", UniqueID))
-	return &MetaServer{
+	ms := &MetaServer{
 		Store:    Store,
 		UniqueId: UniqueID,
-	}, nil
+	}
+	go ms.watchVolumeState()
+	return ms, nil
 }

@@ -1,17 +1,16 @@
 package metaserver
 
 import (
+	"encoding/json"
 	"errors"
 	"os"
 	"time"
 
 	rfspb "github.com/rfeverything/rfs/internal/proto/rfs"
-	"google.golang.org/protobuf/proto"
 )
 
 type Entry struct {
-	Path string
-
+	Name string
 	Attr
 	Extended map[string][]byte
 
@@ -50,7 +49,7 @@ func (e *Entry) ToExistingProtoEntry(message *rfspb.Entry) error {
 	if e == nil {
 		return errors.New("entry is nil")
 	}
-	message.Name = e.Path
+	message.Name = e.Name
 	message.Attributes = &rfspb.FuseAttributes{
 		Mtime:    e.Mtime.Unix(),
 		Crtime:   e.Crtime.Unix(),
@@ -65,20 +64,21 @@ func (e *Entry) ToExistingProtoEntry(message *rfspb.Entry) error {
 	}
 	message.Extended = e.Extended
 	message.Chunks = e.Chunks
+	message.Content = e.Content
 	return nil
 }
 
 func (e *Entry) EncodeAttributesAndChunks() ([]byte, error) {
 	msg := &rfspb.Entry{}
 	e.ToExistingProtoEntry(msg)
-	return proto.Marshal(msg)
+	return json.Marshal(msg)
 }
 
 func FromProtoEntry(msg *rfspb.Entry, e *Entry) {
 	if msg == nil {
 		return
 	}
-	e.Path = msg.Name
+	e.Name = msg.Name
 	e.Mtime = time.Unix(msg.Attributes.Mtime, 0)
 	e.Crtime = time.Unix(msg.Attributes.Crtime, 0)
 	e.Mode = os.FileMode(msg.Attributes.FileMode)
@@ -91,11 +91,12 @@ func FromProtoEntry(msg *rfspb.Entry, e *Entry) {
 	e.Inode = msg.Attributes.Inode
 	e.Extended = msg.Extended
 	e.Chunks = msg.Chunks
+	e.Content = msg.Content
 }
 
 func (e *Entry) DecodeAttributesAndChunks(data []byte) error {
 	msg := &rfspb.Entry{}
-	if err := proto.Unmarshal(data, msg); err != nil {
+	if err := json.Unmarshal(data, msg); err != nil {
 		return err
 	}
 	FromProtoEntry(msg, e)

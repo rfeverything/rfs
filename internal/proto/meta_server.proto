@@ -26,7 +26,7 @@ service MetaServer{
 
 message CreateFileRequest{
     string clientId = 1;
-    string path = 2;
+    string dir = 2;
     bool o_excl = 3;
     bool skip_check_parent_directory = 4;
 
@@ -39,7 +39,7 @@ message CreateFileResponse{
 
 message AppendFileRequest{
     string clientId = 1;
-    string path = 2;
+    string dir = 2;
     repeated rfs.Entry entry = 3;
 }
 
@@ -69,7 +69,7 @@ message StatResponse{
 
 message MkdirRequest{
     string clientId = 1;
-    string directory = 3;
+    string directory = 2;
 }
 
 message MkdirResponse{
@@ -78,8 +78,8 @@ message MkdirResponse{
 
 message RemoveRequest{
     string clientId = 1;
-    string path = 3;
-    bool recursive = 4;
+    string path = 2;
+    bool recursive = 3;
 }
 
 message RemoveResponse{
@@ -88,7 +88,7 @@ message RemoveResponse{
 
 message ListRequest{
     string clientId = 1;
-    string directory = 3;
+    string dir = 2;
 }
 
 message ListResponse{

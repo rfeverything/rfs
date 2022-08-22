@@ -26,6 +26,7 @@ func init() {
 		"port":   "8081",
 		"host":   "",
 		"dbpath": "./db",
+		"size":   "1G",
 	})
 	cfg.SetDefault("metrics", map[string]interface{}{
 		"port": "8082",

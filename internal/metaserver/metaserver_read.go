@@ -63,14 +63,14 @@ func (ms *MetaServer) Stat(ctx context.Context, req *mpb.StatRequest) (*mpb.Stat
 }
 
 func (ms *MetaServer) List(ctx context.Context, req *mpb.ListRequest) (*mpb.ListResponse, error) {
-	pth := req.GetDirectory()
-	e, err := ms.Store.GetEntry(ctx, pth)
-	if err != nil {
-		return nil, err
-	}
-	if !e.IsDir() {
-		return nil, errors.New("not a directory")
-	}
+	pth := req.GetDir()
+	// e, err := ms.Store.GetEntry(ctx, pth)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// if !e.IsDir() {
+	// 	return nil, errors.New("not a directory")
+	// }
 	entries, err := ms.Store.ListEntries(ctx, pth)
 	if err != nil {
 		return nil, err

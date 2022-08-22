@@ -2,13 +2,19 @@ package volume
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"strconv"
 	"time"
 
+	"github.com/google/uuid"
 	gorocksdb "github.com/linxGnu/grocksdb"
+	"github.com/rfeverything/rfs/internal/config"
 	"github.com/rfeverything/rfs/internal/logger"
 	rfspb "github.com/rfeverything/rfs/internal/proto/rfs"
 	vpb "github.com/rfeverything/rfs/internal/proto/volume_server"
 	clientv3 "go.etcd.io/etcd/client/v3"
+
 	"google.golang.org/protobuf/proto"
 )
 
@@ -17,17 +23,34 @@ type VolumeServer struct {
 	TotalChunkCount uint64
 	Size            uint64
 	Used            uint64
+	ChunksSet       map[int64]uint64 // chunkid -> size
 
 	Host string
 	Port int
 
-	sdb  *gorocksdb.DB
-	db   *gorocksdb.DB
-	etcd *clientv3.Client
+	sdb     *gorocksdb.DB
+	db      *gorocksdb.DB
+	etcd    *clientv3.Client
+	leaseID clientv3.LeaseID
 }
 
 func NewVolumeServer() *VolumeServer {
-	vs := &VolumeServer{}
+	vs := &VolumeServer{
+		Host: config.Global().GetString("volume.host"),
+		Port: config.Global().GetInt("volume.port"),
+	}
+
+	id := config.Global().GetString("volume.uid")
+	if id == "" {
+		id = uuid.New().String()
+		config.Global().Set("volume.uid", id)
+		config.Global().WriteConfig()
+	}
+	vs.ID = id
+
+	size := config.Global().GetString("volume.size")
+	vs.Size, _ = strconv.ParseUint(size, 10, 64)
+
 	opt := gorocksdb.NewDefaultOptions()
 	opt.SetCreateIfMissing(true)
 	sdb, err := gorocksdb.OpenDb(opt, "./volume_state")
@@ -42,7 +65,8 @@ func NewVolumeServer() *VolumeServer {
 	vs.db = db
 	vs.recoverFromPersistence()
 	logger.Global().Sugar().Infof("volume server %s started", vs.ID)
-	go vs.registerToEtcd()
+	vs.registerToEtcd()
+	vs.persist()
 	return vs
 }
 
@@ -59,39 +83,40 @@ func (vs *VolumeServer) registerToEtcd() {
 	if err != nil {
 		logger.Global().Sugar().Fatalf("grant failed: %v", err)
 	}
-	_, kaerr := c.KeepAlive(context.TODO(), resp.ID)
+	klresp, kaerr := c.KeepAlive(context.TODO(), resp.ID)
 	if kaerr != nil {
 		logger.Global().Sugar().Fatalf("keep alive failed: %v", kaerr)
 	}
+	//clean lease keepalive response queue
+	go func() {
+		for {
+			<-klresp
+		}
+	}()
 	vs.etcd = c
-	for {
-		time.Sleep(1 * time.Second)
-		logger.Global().Sugar().Infof("volume server %s is alive", vs.ID)
-		s, err := proto.Marshal(vs.getStatus())
-		if err != nil {
-			logger.Global().Sugar().Errorf("marshal volume status failed: %v", err)
-		}
-		_, err = vs.etcd.Put(context.Background(), "/rfs/volumes/"+vs.ID, string(s), clientv3.WithLease(resp.ID))
-		if err != nil {
-			logger.Global().Sugar().Errorf("put volume status to etcd failed: %v", err)
-		}
-	}
+	vs.leaseID = resp.ID
 }
 
 func (vs *VolumeServer) persist() {
-	s := &vpb.VolumeStatus{
-		ChunkCount: vs.TotalChunkCount,
-		Size:       vs.Size,
-		Used:       vs.Used,
-	}
+	s := vs.getStatus()
+	logger.Global().Sugar().Infof("persist volume status: %v", s)
 	data, err := proto.Marshal(s)
 	if err != nil {
 		logger.Global().Sugar().Errorf("marshal volume status failed: %v", err)
 	}
 	err = vs.sdb.Put(gorocksdb.NewDefaultWriteOptions(), []byte(vs.ID), data)
 	if err != nil {
-		logger.Global().Sugar().Errorf("put volume status to db failed: %v", err)
+		logger.Global().Sugar().Errorf("put volume status failed: %v", err)
 	}
+	jdata, err := json.Marshal(s)
+	if err != nil {
+		logger.Global().Sugar().Errorf("marshal volume status failed: %v", err)
+	}
+	_, err = vs.etcd.Put(context.Background(), "/rfs/volumes/"+vs.ID, string(jdata), clientv3.WithLease(vs.leaseID))
+	if err != nil {
+		logger.Global().Sugar().Errorf("put volume status to etcd failed: %v", err)
+	}
+	logger.Global().Sugar().Infof("volume server %s persisted", vs.ID)
 }
 
 func (vs *VolumeServer) recoverFromPersistence() {
@@ -105,8 +130,8 @@ func (vs *VolumeServer) recoverFromPersistence() {
 		logger.Global().Sugar().Errorf("unmarshal volume status failed: %v", err)
 	}
 	vs.TotalChunkCount = s.ChunkCount
-	vs.Size = s.Size
 	vs.Used = s.Used
+	vs.ChunksSet = s.ChunkIds
 }
 
 func (vs *VolumeServer) PutChunk(ctx context.Context, req *vpb.PutChunkRequest) (*vpb.PutChunkResponse, error) {
@@ -118,6 +143,10 @@ func (vs *VolumeServer) PutChunk(ctx context.Context, req *vpb.PutChunkRequest) 
 		if err != nil {
 			return nil, err
 		}
+		vs.ChunksSet[key] = uint64(len(value))
+		vs.TotalChunkCount++
+		vs.Used += uint64(len(value))
+		vs.persist()
 	}
 	return nil, nil
 }
@@ -144,23 +173,29 @@ func (vs *VolumeServer) DeleteChunk(ctx context.Context, req *vpb.DeleteChunkReq
 	if err != nil {
 		return nil, err
 	}
+	delete(vs.ChunksSet, key)
+	vs.TotalChunkCount--
+	vs.Used -= uint64(vs.ChunksSet[key])
+	vs.persist()
 	return nil, nil
 }
 
 func (vs *VolumeServer) VolumeStatus(ctx context.Context, req *vpb.VolumeStatusRequest) (*vpb.VolumeStatusResponse, error) {
-	return vs.getStatus(), nil
+	s := vs.getStatus()
+	s.VolumeId = vs.ID
+	return &vpb.VolumeStatusResponse{
+		VolumeStatus: s,
+	}, nil
 }
 
-func (vs *VolumeServer) getStatus() *vpb.VolumeStatusResponse {
-	return &vpb.VolumeStatusResponse{
-		VolumeStatus: &vpb.VolumeStatus{
-			VolumeId:   vs.ID,
-			ChunkCount: vs.TotalChunkCount,
-			Size:       vs.Size,
-			Used:       vs.Used,
-			Free:       vs.Size - vs.Used,
-			Address:    vs.Host + ":" + string(rune(vs.Port)),
-		},
+func (vs *VolumeServer) getStatus() *vpb.VolumeStatus {
+	return &vpb.VolumeStatus{
+		ChunkCount: vs.TotalChunkCount,
+		Size:       vs.Size,
+		Used:       vs.Used,
+		Free:       vs.Size - vs.Used,
+		Address:    vs.Host + ":" + fmt.Sprint(vs.Port),
+		ChunkIds:   vs.ChunksSet,
 	}
 }
 

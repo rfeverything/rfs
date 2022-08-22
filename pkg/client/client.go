@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/fs"
 	"net/url"
+	"path"
 
 	"github.com/google/uuid"
 	"github.com/rfeverything/rfs/internal/config"
@@ -15,6 +16,7 @@ import (
 	rfspb "github.com/rfeverything/rfs/internal/proto/rfs"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type RfsClient struct {
@@ -28,10 +30,11 @@ func NewRfsClient() (*RfsClient, error) {
 	if err != nil {
 		return nil, err
 	}
-	conn, err := grpc.Dial(config.Global().GetString("client.server")+":"+config.Global().GetString("client.port"), grpc.WithInsecure())
+	conn, err := grpc.Dial(config.Global().GetString("client.server")+":"+config.Global().GetString("client.port"), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
 	}
+	logger.Global().Debug("new rfs client", zap.String("server", config.Global().GetString("client.server")+":"+config.Global().GetString("client.port")))
 
 	suid := config.Global().GetString("client.uuid")
 	var uid uuid.UUID
@@ -75,7 +78,7 @@ func (rc *RfsClient) GetFile(ctx context.Context, path string) (fileName string,
 	return resp.Entry.Name, bytes.NewBuffer(resp.Entry.Content), nil
 }
 
-func (rc *RfsClient) PutFile(ctx context.Context, path string, file fs.File) (err error) {
+func (rc *RfsClient) PutFile(ctx context.Context, dir string, file fs.File) (err error) {
 	stat, err := file.Stat()
 	if err != nil {
 		panic(err)
@@ -84,12 +87,16 @@ func (rc *RfsClient) PutFile(ctx context.Context, path string, file fs.File) (er
 	if _, err := buf.ReadFrom(file); err != nil {
 		panic(err)
 	}
-	logger.Global().Debug("put file", zap.String("path", path))
+	dir, filename := path.Split(dir)
+	if filename == "" {
+		filename = stat.Name()
+	}
+	logger.Global().Debug("put file", zap.String("dir", dir))
 	req := &mpb.CreateFileRequest{
-		Path:     path,
+		Dir:      dir,
 		ClientId: rc.UUID.String(),
 		Entry: &rfspb.Entry{
-			Name: stat.Name(),
+			Name: filename,
 			Attributes: &rfspb.FuseAttributes{
 				FileSize: uint64(stat.Size()),
 				FileMode: uint32(stat.Mode()),
@@ -100,7 +107,7 @@ func (rc *RfsClient) PutFile(ctx context.Context, path string, file fs.File) (er
 		},
 	}
 
-	logger.Global().Debug("put file", zap.String("path", path), zap.String("file", stat.Name()))
+	logger.Global().Debug("put file", zap.String("dir", dir), zap.String("file", stat.Name()))
 	resp, err := rc.mpbclient.CreateFile(ctx, req)
 	if err != nil {
 		panic(err)
@@ -114,12 +121,12 @@ func (rc *RfsClient) PutFile(ctx context.Context, path string, file fs.File) (er
 }
 
 func (rc *RfsClient) Mkdir(ctx context.Context, path string) (err error) {
-	req := &mpb.CreateFileRequest{
-		Path:     path,
-		ClientId: rc.UUID.String(),
+	req := &mpb.MkdirRequest{
+		ClientId:  rc.UUID.String(),
+		Directory: path,
 	}
 	logger.Global().Debug("mkdir", zap.String("path", path))
-	resp, err := rc.mpbclient.CreateFile(ctx, req)
+	resp, err := rc.mpbclient.Mkdir(ctx, req)
 	if err != nil {
 		return err
 	}
@@ -167,8 +174,8 @@ func (rc *RfsClient) Remove(ctx context.Context, path string) (err error) {
 
 func (rc *RfsClient) List(ctx context.Context, dir string) (es []*rfspb.Entry, err error) {
 	req := &mpb.ListRequest{
-		ClientId:  rc.UUID.String(),
-		Directory: dir,
+		ClientId: rc.UUID.String(),
+		Dir:      dir,
 	}
 	logger.Global().Debug("list", zap.String("dir", dir))
 	resp, err := rc.mpbclient.List(ctx, req)

@@ -9,9 +9,8 @@ message Entry {
     repeated FileChunk chunks = 3;
     FuseAttributes attributes = 4;
     map<string, bytes> extended = 5;
-    // bytes hard_link_id = 7;
-    // int32 hard_link_counter = 8; // only exists in hard link meta data
-    bytes content = 9; // if not empty, the file content
+
+    bytes content = 6; // if not empty, the file content
 }
 
 message FuseAttributes {
@@ -23,9 +22,9 @@ message FuseAttributes {
     int64 crtime = 6; // unix time in seconds
     string mime = 7;
 
-    bytes md5 = 14;
-    uint32 rdev = 16;
-    uint64 inode = 17;
+    bytes md5 = 8;
+    uint32 rdev = 9;
+    uint64 inode = 10;
 }
 
 message FileChunk {

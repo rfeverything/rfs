@@ -22,7 +22,7 @@ func (e *Entry) SplitToChunks(chunkSize uint64) error {
 		if i+chunkSize > uint64(len(e.Content)) {
 			chunk.Size = uint64(len(e.Content)) - i
 		}
-		chunk.Content = e.Content[i : i+chunkSize]
+		chunk.Content = e.Content[i : i+chunk.Size]
 		e.Chunks = append(e.Chunks, chunk)
 	}
 	return nil
