@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"sync"
 
 	"github.com/rfeverything/rfs/internal/constant"
 	"github.com/rfeverything/rfs/internal/logger"
@@ -39,23 +40,36 @@ func (ms *MetaServer) CreateFile(ctx context.Context, req *mpb.CreateFileRequest
 	}
 	//TODO: 2pc
 	//TODO: Time out
+	wait := sync.WaitGroup{}
+	gerr := make(chan error, len(e.Chunks))
 	for _, chunk := range e.Chunks {
 		for _, volumeserver := range chunk.VolumeIds {
 			if _, e := ms.VolumeClients[volumeserver]; !e {
 				return nil, errors.New("volume server not found")
 			}
-			resp, err := ms.VolumeClients[volumeserver].PutChunk(ctx, &vpb.PutChunkRequest{
+			req := &vpb.PutChunkRequest{
 				Chunks: []*rfspb.FileChunk{chunk},
-			})
-			if err != nil {
-				logger.Global().Error("CreateFile", zap.Error(err))
-				return nil, err
 			}
-			if resp.Error != "" {
-				logger.Global().Error("CreateFile", zap.Error(errors.New(resp.Error)))
-				return nil, errors.New(resp.Error)
-			}
+			wait.Add(1)
+			go func(volumeserver string, req *vpb.PutChunkRequest) {
+				resp, err := ms.VolumeClients[volumeserver].PutChunk(ctx, req)
+				wait.Done()
+				if err != nil {
+					logger.Global().Error("CreateFile", zap.Error(err))
+					gerr <- err
+					return
+				}
+				if resp.Error != "" {
+					logger.Global().Error("CreateFile", zap.Error(errors.New(resp.Error)))
+					gerr <- errors.New(resp.Error)
+					return
+				}
+			}(volumeserver, req)
 		}
+	}
+	wait.Wait()
+	if len(gerr) > 0 {
+		return nil, <-gerr
 	}
 	return &mpb.CreateFileResponse{
 		Error: "",

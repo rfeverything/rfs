@@ -3,7 +3,9 @@ package metaserver
 import (
 	"context"
 	"errors"
+	"sync"
 
+	"github.com/rfeverything/rfs/internal/logger"
 	mpb "github.com/rfeverything/rfs/internal/proto/meta_server"
 	rfspb "github.com/rfeverything/rfs/internal/proto/rfs"
 	vpb "github.com/rfeverything/rfs/internal/proto/volume_server"
@@ -15,19 +17,37 @@ func (ms *MetaServer) GetFile(ctx context.Context, req *mpb.GetFileRequest) (*mp
 	if err != nil {
 		return nil, err
 	}
+	wait := sync.WaitGroup{}
+	gerr := make(chan error, len(e.Chunks))
 	for _, chunk := range e.Chunks {
-		for _, volumeserver := range chunk.VolumeIds {
-			resp, err := ms.VolumeClients[volumeserver].GetChunk(ctx, &vpb.GetChunkRequest{
-				ChunkId: chunk.Chunkid,
-			})
-			if err != nil {
-				return nil, err
+		wait.Add(1)
+		go func(chunk *rfspb.FileChunk) {
+			for _, volumeserver := range chunk.VolumeIds {
+				req := &vpb.GetChunkRequest{
+					ChunkId: chunk.Chunkid,
+				}
+				resp, err := ms.VolumeClients[volumeserver].GetChunk(ctx, req)
+				if err != nil {
+					logger.Global().Sugar().Errorf("get chunk error: %v", err)
+					continue
+				}
+				if resp.Error != "" {
+					logger.Global().Sugar().Errorf("get chunk error: %v", resp.Error)
+					continue
+				}
+				chunk.Content = resp.GetChunk().Content
+				wait.Done()
+				return
 			}
-			if resp.Error != "" {
-				return nil, errors.New(resp.Error)
-			}
-			chunk.Content = resp.GetChunk().Content
-			break
+			gerr <- errors.New("no volume server available")
+			wait.Done()
+		}(chunk)
+	}
+	wait.Wait()
+	close(gerr)
+	for err := range gerr {
+		if err != nil {
+			return nil, err
 		}
 	}
 	if err := e.CombineChunksGetContent(); err != nil {
