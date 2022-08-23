@@ -29,6 +29,11 @@ var getCmd = &cobra.Command{
 		if err != nil {
 			log.Fatalln(err)
 		}
+		out, err := os.Create(localPath)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		defer out.Close()
 		filename, file, err := c.GetFile(context.Background(), remotePath)
 		if err != nil {
 			log.Fatalln(err)
@@ -37,11 +42,6 @@ var getCmd = &cobra.Command{
 		if localPath == "" {
 			localPath = filename
 		}
-		out, err := os.Create(localPath)
-		if err != nil {
-			log.Fatalln(err)
-		}
-		defer out.Close()
 
 		fmt.Printf("download file %s success\n", filename)
 		_, err = io.Copy(out, file)
