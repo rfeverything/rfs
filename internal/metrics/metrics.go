@@ -24,14 +24,14 @@ var (
 			Help:    "Duration of requests received by the meta server",
 			Buckets: prometheus.ExponentialBuckets(0.0001, 2, 24),
 		},
-		[]string{"type", "status"},
+		[]string{"type"},
 	)
 	MetaServerStoreCounter = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "meta_server_store_total",
 			Help: "Total number of stores received by the meta server",
 		},
-		[]string{"store", "type"},
+		[]string{"type"},
 	)
 	MetaServerStoreDuration = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
@@ -54,7 +54,7 @@ var (
 			Help:    "Duration of requests received by the volume server",
 			Buckets: prometheus.ExponentialBuckets(0.0001, 2, 24),
 		},
-		[]string{"type", "status"},
+		[]string{"type"},
 	)
 	VolumeServerStoreCounter = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
@@ -69,7 +69,7 @@ var (
 			Help:    "Duration of stores received by the volume server",
 			Buckets: prometheus.ExponentialBuckets(0.0001, 2, 24),
 		},
-		[]string{"store", "type", "status"},
+		[]string{"type", "status"},
 	)
 	VolumeServerDiskUsage = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{

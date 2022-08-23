@@ -14,6 +14,8 @@ func init() {
 	cfg.AddConfigPath("$HOME/.rfs")
 	cfg.SetConfigType("yaml")
 
+	cfg.SetDefault("debug", "true")
+
 	cfg.SetDefault("client", map[string]interface{}{
 		"server": "localhost",
 		"port":   "8080",
@@ -26,7 +28,7 @@ func init() {
 		"port":   "8081",
 		"host":   "",
 		"dbpath": "./db",
-		"size":   "1G",
+		"size":   "4",
 	})
 	cfg.SetDefault("metrics", map[string]interface{}{
 		"port": "8082",

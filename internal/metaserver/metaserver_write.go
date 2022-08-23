@@ -44,7 +44,9 @@ func (ms *MetaServer) CreateFile(ctx context.Context, req *mpb.CreateFileRequest
 	gerr := make(chan error, len(e.Chunks))
 	for _, chunk := range e.Chunks {
 		for _, volumeserver := range chunk.VolumeIds {
+			logger.Global().Info("CreateFile", zap.String("volumeserver", volumeserver))
 			if _, e := ms.VolumeClients[volumeserver]; !e {
+				logger.Global().Error("CreateFile", zap.String("volumeserver", volumeserver))
 				return nil, errors.New("volume server not found")
 			}
 			req := &vpb.PutChunkRequest{
@@ -52,8 +54,8 @@ func (ms *MetaServer) CreateFile(ctx context.Context, req *mpb.CreateFileRequest
 			}
 			wait.Add(1)
 			go func(volumeserver string, req *vpb.PutChunkRequest) {
+				defer wait.Done()
 				resp, err := ms.VolumeClients[volumeserver].PutChunk(ctx, req)
-				wait.Done()
 				if err != nil {
 					logger.Global().Error("CreateFile", zap.Error(err))
 					gerr <- err

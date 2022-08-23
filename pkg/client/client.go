@@ -60,7 +60,7 @@ func NewRfsClient() (*RfsClient, error) {
 	}, nil
 }
 
-func (rc *RfsClient) GetFile(ctx context.Context, path string) (fileName string, file io.Writer, err error) {
+func (rc *RfsClient) GetFile(ctx context.Context, path string) (fileName string, file io.Reader, err error) {
 	req := &mpb.GetFileRequest{
 		Path:     path,
 		ClientId: rc.UUID.String(),

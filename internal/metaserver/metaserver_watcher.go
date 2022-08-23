@@ -12,6 +12,7 @@ func (ms *MetaServer) watchVolumeState() {
 		return
 	}
 	for _, st := range sts {
+		logger.Global().Debug("watchVolumeState", zap.String("volumeId", st.VolumeId), zap.Int64("free", int64(st.Free)))
 		ms.VolumeClients[st.VolumeId] = NewVolumeClient(st.Address)
 	}
 
@@ -22,6 +23,7 @@ func (ms *MetaServer) watchVolumeState() {
 		}
 		switch event.Type {
 		case VolumeEventTypePut:
+			logger.Global().Info("watchVolumeState", zap.String("volumeId", event.VolumeId))
 			ms.VolumeClients[event.VolumeId] = NewVolumeClient(event.Status.Address)
 		case VolumeEventTypeDelete:
 			delete(ms.VolumeClients, event.VolumeId)

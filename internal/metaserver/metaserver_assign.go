@@ -5,12 +5,15 @@ import (
 	"sort"
 
 	"github.com/rfeverything/rfs/internal/constant"
+	"github.com/rfeverything/rfs/internal/logger"
 	"github.com/rfeverything/rfs/internal/proto/rfs"
 	vpb "github.com/rfeverything/rfs/internal/proto/volume_server"
+	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 )
 
 func (ms *MetaServer) assignVolumeForChunks(volumes []*vpb.VolumeStatus, chunks []*rfs.FileChunk) error {
+	logger.Global().Debug("assignVolumeForChunks", zap.Any("volumes", volumes), zap.Any("chunks", chunks))
 	for _, chunk := range chunks {
 		sort.Slice(volumes, func(i, j int) bool {
 			return volumes[i].Free < volumes[j].Free

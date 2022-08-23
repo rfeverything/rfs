@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -48,8 +47,7 @@ func NewVolumeServer() *VolumeServer {
 	}
 	vs.ID = id
 
-	size := config.Global().GetString("volume.size")
-	vs.Size, _ = strconv.ParseUint(size, 10, 64)
+	vs.Size = config.Global().GetUint64("volume.size") * 1024 * 1024 * 1024
 
 	opt := gorocksdb.NewDefaultOptions()
 	opt.SetCreateIfMissing(true)
@@ -63,6 +61,7 @@ func NewVolumeServer() *VolumeServer {
 		logger.Global().Sugar().Fatalf("open volume db failed: %v", err)
 	}
 	vs.db = db
+	vs.ChunksSet = make(map[int64]uint64)
 	vs.recoverFromPersistence()
 	logger.Global().Sugar().Infof("volume server %s started", vs.ID)
 	vs.registerToEtcd()
@@ -131,7 +130,11 @@ func (vs *VolumeServer) recoverFromPersistence() {
 	}
 	vs.TotalChunkCount = s.ChunkCount
 	vs.Used = s.Used
-	vs.ChunksSet = s.ChunkIds
+	if s.ChunkIds != nil {
+		for cid := range s.ChunkIds {
+			vs.ChunksSet[cid] = s.ChunkIds[cid]
+		}
+	}
 }
 
 func (vs *VolumeServer) PutChunk(ctx context.Context, req *vpb.PutChunkRequest) (*vpb.PutChunkResponse, error) {
@@ -148,7 +151,7 @@ func (vs *VolumeServer) PutChunk(ctx context.Context, req *vpb.PutChunkRequest) 
 		vs.Used += uint64(len(value))
 		vs.persist()
 	}
-	return nil, nil
+	return &vpb.PutChunkResponse{}, nil
 }
 func (vs *VolumeServer) GetChunk(ctx context.Context, req *vpb.GetChunkRequest) (*vpb.GetChunkResponse, error) {
 	logger.Global().Sugar().Infof("get chunk %d", req.ChunkId)
@@ -190,6 +193,7 @@ func (vs *VolumeServer) VolumeStatus(ctx context.Context, req *vpb.VolumeStatusR
 
 func (vs *VolumeServer) getStatus() *vpb.VolumeStatus {
 	return &vpb.VolumeStatus{
+		VolumeId:   vs.ID,
 		ChunkCount: vs.TotalChunkCount,
 		Size:       vs.Size,
 		Used:       vs.Used,

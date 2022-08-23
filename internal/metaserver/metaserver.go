@@ -33,6 +33,7 @@ func NewMetaServer() (*MetaServer, error) {
 		Store:    Store,
 		UniqueId: UniqueID,
 	}
+	ms.VolumeClients = make(map[string]vpb.VolumeServerClient)
 	go ms.watchVolumeState()
 	return ms, nil
 }

@@ -21,9 +21,10 @@ var getCmd = &cobra.Command{
 	Long: `Download the file from the rfs. For example:
 		rfs get test.txt.
 	`,
-	Args: cobra.ExactArgs(1),
+	Args: cobra.RangeArgs(1, 2),
 	Run: func(cmd *cobra.Command, args []string) {
 		remotePath := args[0]
+		localPath := args[1]
 		c, err := client.NewRfsClient()
 		if err != nil {
 			log.Fatalln(err)
@@ -33,14 +34,20 @@ var getCmd = &cobra.Command{
 			log.Fatalln(err)
 		}
 
-		out, err := os.Create(filename)
+		if localPath == "" {
+			localPath = filename
+		}
+		out, err := os.Create(localPath)
 		if err != nil {
 			log.Fatalln(err)
 		}
 		defer out.Close()
 
 		fmt.Printf("download file %s success\n", filename)
-		io.Copy(file, out)
+		_, err = io.Copy(out, file)
+		if err != nil {
+			log.Fatalln(err)
+		}
 
 		fmt.Println("get file success")
 	},
