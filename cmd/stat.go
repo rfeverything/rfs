@@ -1,12 +1,13 @@
 /*
 Copyright © 2022 NAME HERE <EMAIL ADDRESS>
-
 */
 package cmd
 
 import (
-	"fmt"
+	"context"
+	"log"
 
+	"github.com/rfeverything/rfs/pkg/client"
 	"github.com/spf13/cobra"
 )
 
@@ -18,8 +19,18 @@ var statCmd = &cobra.Command{
 	For example:
 		rfs stat test.txt
 		`,
+	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("stat called")
+		rmtPath := args[0]
+		c, err := client.NewRfsClient()
+		if err != nil {
+			log.Fatalln(err)
+		}
+		stat, err := c.Stat(context.Background(), rmtPath)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		log.Println(stat)
 	},
 }
 
