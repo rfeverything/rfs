@@ -7,11 +7,12 @@ import (
 	"google.golang.org/grpc"
 )
 
-func NewVolumeClient(addr string) vpb.VolumeServerClient {
+func NewVolumeClient(addr string) (vpb.VolumeServerClient, error) {
 	conn, err := grpc.Dial(addr, grpc.WithInsecure())
 	if err != nil {
 		logger.Global().Fatal(err.Error())
+		return nil, err
 	}
 	logger.Global().Debug("new volume client", zap.String("addr", addr))
-	return vpb.NewVolumeServerClient(conn)
+	return vpb.NewVolumeServerClient(conn), nil
 }

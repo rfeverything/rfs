@@ -190,6 +190,18 @@ func (rc *RfsClient) List(ctx context.Context, dir string) (es []*rfspb.Entry, e
 }
 
 func (rc *RfsClient) Stat(ctx context.Context, dir string) (fileInfo *rfspb.Entry, err error) {
-
-	return nil, nil
+	req := &mpb.StatRequest{
+		ClientId: rc.UUID.String(),
+		Path:     dir,
+	}
+	logger.Global().Debug("stat", zap.String("path", dir))
+	resp, err := rc.mpbclient.Stat(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	if resp.Error != "" {
+		return nil, errors.New(resp.Error)
+	}
+	logger.Global().Debug("stat done", zap.String("path", dir))
+	return resp.Entry, nil
 }

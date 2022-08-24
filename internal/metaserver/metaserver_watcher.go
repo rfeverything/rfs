@@ -1,6 +1,8 @@
 package metaserver
 
 import (
+	"time"
+
 	"github.com/rfeverything/rfs/internal/logger"
 	"go.uber.org/zap"
 )
@@ -12,8 +14,17 @@ func (ms *MetaServer) watchVolumeState() {
 		return
 	}
 	for _, st := range sts {
-		logger.Global().Debug("watchVolumeState", zap.String("volumeId", st.VolumeId), zap.Int64("free", int64(st.Free)))
-		ms.VolumeClients[st.VolumeId] = NewVolumeClient(st.Address)
+		for cnt := 0; cnt < 3; cnt++ {
+			logger.Global().Debug("watchVolumeState", zap.String("volumeId", st.VolumeId), zap.Int64("free", int64(st.Free)))
+			vc, err := NewVolumeClient(st.Address)
+			if err != nil {
+				logger.Global().Error("watchVolumeState", zap.Error(err), zap.String("volumeId", st.VolumeId), zap.Int64("free", int64(st.Free)), zap.String("address", st.Address), zap.Int("cnt", cnt))
+				time.Sleep(time.Second)
+				continue
+			}
+			ms.VolumeClients[st.VolumeId] = vc
+			break
+		}
 	}
 
 	for event := range ms.Store.GetVolumesStatusChan() {
@@ -23,8 +34,17 @@ func (ms *MetaServer) watchVolumeState() {
 		}
 		switch event.Type {
 		case VolumeEventTypePut:
-			logger.Global().Info("watchVolumeState", zap.String("volumeId", event.VolumeId))
-			ms.VolumeClients[event.VolumeId] = NewVolumeClient(event.Status.Address)
+			for cnt := 0; cnt < 3; cnt++ {
+				logger.Global().Info("watchVolumeState", zap.String("volumeId", event.VolumeId))
+				vc, err := NewVolumeClient(event.Status.Address)
+				if err != nil {
+					logger.Global().Error("watchVolumeState", zap.Error(err), zap.String("volumeId", event.VolumeId), zap.String("address", event.Status.Address), zap.Int("cnt", cnt))
+					time.Sleep(time.Second)
+					continue
+				}
+				ms.VolumeClients[event.VolumeId] = vc
+				break
+			}
 		case VolumeEventTypeDelete:
 			delete(ms.VolumeClients, event.VolumeId)
 		}

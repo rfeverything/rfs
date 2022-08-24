@@ -70,14 +70,17 @@ func (ms *MetaServer) GetFile(ctx context.Context, req *mpb.GetFileRequest) (*mp
 }
 
 func (ms *MetaServer) Stat(ctx context.Context, req *mpb.StatRequest) (*mpb.StatResponse, error) {
+	logger.Global().Sugar().Debugf("stat %s", req.GetPath())
 	pth := req.GetPath()
 	e, err := ms.Store.GetEntry(ctx, pth)
 	if err != nil {
+		logger.Global().Sugar().Errorf("get entry error: %v", err)
 		return nil, err
 	}
 	re := &rfspb.Entry{}
 
 	if err := e.ToExistingProtoEntry(re, false); err != nil {
+		logger.Global().Sugar().Errorf("to proto entry error: %v", err)
 		return nil, err
 	}
 
@@ -87,6 +90,7 @@ func (ms *MetaServer) Stat(ctx context.Context, req *mpb.StatRequest) (*mpb.Stat
 }
 
 func (ms *MetaServer) List(ctx context.Context, req *mpb.ListRequest) (*mpb.ListResponse, error) {
+	logger.Global().Sugar().Debugf("list %s", req.GetDir())
 	pth := req.GetDir()
 	// e, err := ms.Store.GetEntry(ctx, pth)
 	// if err != nil {
@@ -97,12 +101,14 @@ func (ms *MetaServer) List(ctx context.Context, req *mpb.ListRequest) (*mpb.List
 	// }
 	entries, err := ms.Store.ListEntries(ctx, pth)
 	if err != nil {
+		logger.Global().Sugar().Errorf("list entries error: %v", err)
 		return nil, err
 	}
 	re := make([]*rfspb.Entry, 0)
 	for _, entry := range entries {
 		res := &rfspb.Entry{}
 		if err := entry.ToExistingProtoEntry(res, false); err != nil {
+			logger.Global().Sugar().Errorf("to proto entry error: %v", err)
 			return nil, err
 		}
 		re = append(re, res)

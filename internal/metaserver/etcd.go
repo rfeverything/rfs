@@ -26,10 +26,8 @@ type EtcdStore struct {
 }
 
 func genKey(dir, FileName string) (key string) {
-	if strings.HasPrefix(dir, "/") {
-		dir = dir[1:]
-	}
-	return strings.Join([]string{dir, FileName}, "/")
+	dir = strings.TrimPrefix(dir, "/")
+	return strings.Join([]string{"file", dir, FileName}, "/")
 }
 
 func NewEtcdStore(UniqueID int32) *EtcdStore {
@@ -120,8 +118,8 @@ func (es *EtcdStore) DeleteEntry(ctx context.Context, path string) error {
 }
 
 func (es *EtcdStore) ListEntries(ctx context.Context, dir string) ([]*Entry, error) {
-	key := dir
-	resp, err := es.client.Get(ctx, string(key), clientv3.WithPrefix())
+	key := genKey(dir, "")
+	resp, err := es.client.Get(ctx, key, clientv3.WithPrefix())
 	if err != nil {
 		return nil, fmt.Errorf("EtcdStore.Get: %v", err)
 	}
@@ -129,7 +127,7 @@ func (es *EtcdStore) ListEntries(ctx context.Context, dir string) ([]*Entry, err
 	for _, kv := range resp.Kvs {
 		var entry Entry
 		if err := entry.DecodeAttributesAndChunks(kv.Value); err != nil {
-			return nil, fmt.Errorf("DecodeAttributesAndChunks: %v", err)
+			continue
 		}
 		entries = append(entries, &entry)
 	}
